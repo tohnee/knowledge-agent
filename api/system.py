@@ -67,7 +67,16 @@ class System:
         self.qa = GroundedQA(self.retriever)
 
     # convenience pass-throughs used by the API/tests
-    def ingest_doc(self, doc): return self.ingest.ingest(doc)
+    def ingest_doc(self, doc, actor: str = "system"):
+        result = self.ingest.ingest(doc)
+        if result.get("status") != "deduped":
+            self.retriever.clear_cache()
+        return result
+
     def ask(self, q, role="analyst", dept=None): return self.qa.answer(q, role, dept)
-    def run_action(self, name, params, role, confirmed=False):
-        return self.actions.execute(name, params, role, confirmed)
+
+    def run_action(self, name, params, role, confirmed=False, actor: str = "system"):
+        result = self.actions.execute(name, params, role, confirmed, actor=actor)
+        if result.get("status") == "executed":
+            self.retriever.clear_cache()
+        return result

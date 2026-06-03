@@ -17,7 +17,7 @@ Driver is injected (so it's unit-testable with a fake). In prod pass a neo4j.Gra
 driver. All writes assume they're called *inside* the Action engine's logical transaction;
 each method opens a session and runs an idempotent MERGE/CREATE."""
 from __future__ import annotations
-import os, time
+import json, os, time
 from action_engine.store_base import KnowledgeStoreBase
 
 
@@ -195,6 +195,29 @@ class Neo4jKnowledgeStore(KnowledgeStoreBase):
                 transactionTime:date($tx)}]->(:Event {type:'StatusChange'})
         """, id=node_id, s=status, d=event_date, tx=time.strftime("%Y-%m-%d"))
 
+    # ── Audit ──
+    def append_audit(self, record: dict):
+        self._run("""
+            CREATE (:AuditEvent {
+                id:$id, schemaVersion:$schema, action:$action, role:$role, actor:$actor,
+                at:$at, paramsHash:$paramsHash, result:$result, decision:$decision, params:$params
+            })
+        """, id=record["id"], schema=record.get("schemaVersion", 1),
+            action=record.get("action", ""), role=record.get("role", ""),
+            actor=record.get("actor", ""), at=float(record.get("at", 0.0)),
+            paramsHash=record.get("paramsHash", ""),
+            result=json.dumps(record.get("result", {}), ensure_ascii=False, sort_keys=True),
+            decision=record.get("decision", ""),
+            params=json.dumps(record.get("params", {}), ensure_ascii=False, sort_keys=True))
+
+    def list_audit(self, limit: int = 100):
+        rows = self._run("""
+            MATCH (a:AuditEvent)
+            RETURN a AS a
+            ORDER BY a.at DESC LIMIT $limit
+        """, limit=int(limit))
+        return [dict(r["a"]) for r in rows if r.get("a") is not None]
+
     def count_objects_by_title(self, title):
         rows = self._run("MATCH (o:Object {title:$t}) RETURN count(o) AS n", t=title)
         return rows[0]["n"] if rows else 0
@@ -217,6 +240,7 @@ class Neo4jKnowledgeStore(KnowledgeStoreBase):
             "CREATE INDEX obj_type IF NOT EXISTS FOR (o:Object) ON (o.objectType)",
             "CREATE INDEX cap_valid IF NOT EXISTS FOR ()-[c:HAS_CAPACITY]-() ON (c.validTime)",
             "CREATE INDEX cap_tx IF NOT EXISTS FOR ()-[c:HAS_CAPACITY]-() ON (c.transactionTime)",
+            "CREATE INDEX audit_at IF NOT EXISTS FOR (a:AuditEvent) ON (a.at)",
         ]:
             try: self._run(stmt)
             except Exception: pass

@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Compile
+        run: python -m compileall -q .
+      - name: Closed loop
+        run: python -m tests.test_closed_loop
+      - name: Neo4j parity fake
+        run: python -m tests.test_neo4j_parity
+      - name: Agent extractor contract
+        run: python -m tests.test_agent_extractor
+      - name: Verifier contract
+        run: python -m tests.test_verifier
+      - name: Embedding benchmark contract
+        run: python -m tests.bench_embedding
+
+  http:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install HTTP dependencies
+        run: pip install -r requirements-http.txt
+      - name: HTTP closed loop
+        run: python -m tests.test_http

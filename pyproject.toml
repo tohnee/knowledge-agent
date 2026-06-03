@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "knowledge-agent"
+version = "0.1.0"
+description = "Fused workspace knowledge agent with governed ingest, retrieval, and bitemporal action writes."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+http = ["fastapi>=0.110", "uvicorn[standard]>=0.27", "httpx>=0.26"]
+neo4j = ["neo4j>=5.18"]
+embeddings = ["FlagEmbedding>=1.2.10", "sentence-transformers>=2.6"]
+all = [
+  "fastapi>=0.110", "uvicorn[standard]>=0.27", "httpx>=0.26",
+  "neo4j>=5.18", "FlagEmbedding>=1.2.10", "sentence-transformers>=2.6"
+]
+
+[tool.setuptools.packages.find]
+include = ["action_engine*", "adapters*", "api*", "common*", "engine*", "tests*"]

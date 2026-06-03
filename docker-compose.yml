@@ -1,0 +1,49 @@
+services:
+  app:
+    build: .
+    environment:
+      WKA_AUTH_MODE: ${WKA_AUTH_MODE:-jwt}
+      WKA_ALLOW_ROLE_HEADER: ${WKA_ALLOW_ROLE_HEADER:-0}
+      WKA_JWT_SECRET: ${WKA_JWT_SECRET:-change-me-dev-secret}
+      WKA_CORS_ORIGINS: ${WKA_CORS_ORIGINS:-http://localhost:8000}
+      NEO4J_URI: bolt://neo4j:7687
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-change-me}
+      DEEPSEEK_LOCAL_URL: http://vllm:8000/v1
+      GLM_LOCAL_URL: http://ollama:11434/v1
+      LOCAL_LLM_HOSTS: vllm,ollama,wka-vllm,wka-ollama
+      CLAUDE_CODE_LOCAL_ONLY: "1"
+    ports:
+      - "8000:8000"
+    depends_on:
+      neo4j:
+        condition: service_started
+    profiles: ["app"]
+
+  neo4j:
+    image: neo4j:5-community
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-change-me}
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j-data:/data
+    profiles: ["app", "neo4j"]
+
+  vllm:
+    image: vllm/vllm-openai:latest
+    profiles: ["llm"]
+    ports:
+      - "8001:8000"
+
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["llm"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+
+volumes:
+  neo4j-data:
+  ollama-data:

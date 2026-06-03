@@ -27,6 +27,10 @@ class Retriever:
         # L1 semantic query cache
         self._cache: dict[str, dict] = {}
 
+    def clear_cache(self) -> None:
+        """Invalidate cached retrieval results after ingest or governed writes."""
+        self._cache.clear()
+
     def retrieve(self, query: str, role: str = "analyst",
                  department: str | None = None) -> dict:
         t0 = time.perf_counter()

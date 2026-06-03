@@ -6,48 +6,70 @@ Run:  uvicorn api.main:app --port 8000
 (FastAPI optional — the System works headless; see tests/test_closed_loop.py)"""
 from __future__ import annotations
 
+import os
+
 try:
     from fastapi import FastAPI, Header, HTTPException
     from fastapi.middleware.cors import CORSMiddleware
+    from api.schemas import ActionRequest, DocumentUpload, QuestionRequest
     _HAS_FASTAPI = True
 except Exception:
     _HAS_FASTAPI = False
 
 from api.system import System
+from api.security.auth import AuthError, authenticate_authorization
 from api.security.rbac import ROLES, apply_field_security
 from common.models import Document, SourceTier
 
 SYS = System()
 
 
+def _principal(authorization: str):
+    try:
+        return authenticate_authorization(authorization)
+    except AuthError as e:
+        if _HAS_FASTAPI:
+            raise HTTPException(401, str(e))
+        raise
+
+
 def _role(authorization: str) -> str:
-    # prod: decode JWT; here trust a header for demo. NEVER let frontend self-assign in prod.
-    if authorization and authorization.startswith("Role "):
-        r = authorization[5:].strip()
-        return r if r in ROLES else "viewer"
-    return "viewer"
+    """Backward-compatible helper used by tests; real API routes call _principal()."""
+    return _principal(authorization).role
+
+
+def _cors_origins() -> list[str]:
+    raw = os.getenv("WKA_CORS_ORIGINS", "http://localhost:8000,http://127.0.0.1:8000")
+    return [o.strip() for o in raw.split(",") if o.strip()]
 
 
 if _HAS_FASTAPI:
     app = FastAPI(title="Workspace Knowledge Agent (fused)", version="1.0")
-    app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_cors_origins(),
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Request-Id"],
+    )
 
     @app.get("/api/v1/health")
-    def health(): return {"status": "ok", "service": "wka-fused"}
+    def health():
+        return {"status": "ok", "service": "wka-fused", "auth_mode": os.getenv("WKA_AUTH_MODE", "dev")}
 
     # ① Sources — upload + build wiki (governed ingest)
     @app.post("/api/v1/documents/upload")
-    def upload(body: dict, authorization: str = Header(default="")):
-        doc = Document(id=body["id"], name=body["name"], text=body["text"],
-                       source_tier=SourceTier(body.get("sourceTier", "analyst")),
-                       controlled=body.get("controlled", False),
-                       meta={"department": body.get("department", "default")})
-        return SYS.ingest_doc(doc)
+    def upload(body: DocumentUpload, authorization: str = Header(default="")):
+        principal = _principal(authorization)
+        doc = Document(id=body.id, name=body.name, text=body.text,
+                       source_tier=SourceTier(body.sourceTier),
+                       controlled=body.controlled,
+                       meta={"department": body.department})
+        return SYS.ingest_doc(doc, actor=principal.subject)
 
     # ② Wiki / Object — get object with field-level security
     @app.get("/api/v1/objects/{oid}")
     def get_object(oid: str, authorization: str = Header(default="")):
-        role = _role(authorization)
+        role = _principal(authorization).role
         o = SYS.store.get_object(oid)
         if not o:
             raise HTTPException(404)
@@ -73,10 +95,12 @@ if _HAS_FASTAPI:
 
     # Actions (write channel) — permission is enforced authoritatively by the Action engine
     @app.post("/api/v1/actions/{name}")
-    def run_action(name: str, body: dict, authorization: str = Header(default="")):
-        role = _role(authorization)
+    def run_action(name: str, body: ActionRequest, authorization: str = Header(default="")):
+        principal = _principal(authorization)
+        params = body.action_params()
         try:
-            return SYS.run_action(name, body, role, confirmed=body.get("_confirmed", False))
+            return SYS.run_action(name, params, principal.role,
+                                  confirmed=body.confirmed, actor=principal.subject)
         except Exception as e:
             msg = str(e)
             code = 403 if "PERMISSION_DENIED" in msg else 422
@@ -84,5 +108,6 @@ if _HAS_FASTAPI:
 
     # ⑤ Ask — grounded QA (engine funnel + OPA/Vault)
     @app.post("/api/v1/knowledge/qa")
-    def qa(body: dict, authorization: str = Header(default="")):
-        return SYS.ask(body["question"], role=_role(authorization), dept=body.get("department"))
+    def qa(body: QuestionRequest, authorization: str = Header(default="")):
+        principal = _principal(authorization)
+        return SYS.ask(body.question, role=principal.role, dept=body.department)

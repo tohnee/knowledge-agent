@@ -1,0 +1,2 @@
+FlagEmbedding>=1.2.10
+sentence-transformers>=2.6
