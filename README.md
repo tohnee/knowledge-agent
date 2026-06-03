@@ -1,125 +1,213 @@
-# Workspace Knowledge Agent — 融合工程（前端 + wka 业务 + wka-scale 引擎）
+# Knowledge Agent
 
-源码级完整闭环。三层焊死成一个系统，**三道接缝（适配层）** 是本工程的核心交付。
-零第三方依赖即可跑核心闭环；装了 FastAPI 则多一条真实 HTTP 链路。
+Knowledge Agent is a fused workspace knowledge system that combines:
 
-## 一句话说清融合关系
+- a lightweight browser frontend
+- a WKA business core with Action-based writes, security policy enforcement, and bitemporal state
+- a retrieval and ingest engine with tiered extraction, multi-stage recall, reranking, and HNSW-backed vector search
 
+The project is intentionally built around three integration seams rather than three isolated subsystems. The core value is that ingest, retrieval, action, and security all run through one shared object graph.
+
+## Overview
+
+At a high level, the system works like this:
+
+```text
+frontend  -->  /api/v1/*  -->  WKA business core  -->  retrieval + ingest engine
+                                 |                      |
+                                 | writes via Action    | shared vector / BM25 / graph / wiki stores
+                                 v                      v
+                           ontology + audit + security + bitemporal history
 ```
-前端(展示)  ──fetch /api/v1/*──▶  wka 业务主干(本体/Action/安全/双时间轴)
-                                        │持有
-                                        ▼调用
-                                  wka-scale 引擎(分级ingest + 三段漏斗 + HNSW/量化)
-```
 
-- **不是替换**：wka-scale 是引擎，嵌入 wka，升级它的 ingest 与检索。
-- **wka 独有的全保留**：Action 引擎（唯一写入通道）、OPA/Vault 动态安全、双时间轴、本体。
-- **接缝才是关键**：模型映射、检索过 OPA、ingest 走 Action —— 这三道适配是真正的闭环。
+Key properties:
 
-## 运行
+- `wka-scale` is not a replacement. It is embedded as the ingest and retrieval engine inside the WKA business core.
+- Action execution remains the only write channel for ontology mutations.
+- Retrieval and ingest share the same engine-side stores, which is what makes the fused architecture work.
+- Security filtering stays authoritative at the business layer, not inside the retrieval engine.
+
+## Architecture
+
+The repo is organized around four responsibilities:
+
+1. `api/` exposes the FastAPI gateway and composition root.
+2. `adapters/` holds the three critical seams between the engine and the WKA domain.
+3. `action_engine/` owns audited writes, permission checks, and bitemporal updates.
+4. `engine/` provides tiered extraction, retrieval funneling, vector infrastructure, and scaling primitives.
+
+The three named seams are:
+
+- `adapters/model_map.py`: engine dataclasses to ontology storage shape
+- `api/services_ask.py`: retriever output to policy-enforced grounded answering
+- `adapters/governed_ingest.py`: extraction results to Action-governed writes
+
+## Quick Start
+
+This repository supports several runtime profiles.
+
+### 1. Zero-dependency core verification
+
+Runs the fused architecture in memory without FastAPI, Neo4j, or external model dependencies:
 
 ```bash
-cd wka-fused
-python -m tests.test_closed_loop     # 20/20 · 无依赖 · 验证六道接缝（内存后端）
-python -m tests.test_neo4j_parity    # 16/16 · 无依赖 · Neo4j 后端与内存后端行为一致（含双时间轴）
-python -m tests.test_http            # 9/9 · 需 fastapi+httpx · 真实 HTTP 链路（缺依赖自动跳过）
+python -m tests.test_closed_loop
+python -m tests.test_neo4j_parity
+```
 
-# 起真实服务（可选）
+### 2. Optional HTTP mode
+
+Install the minimal API dependencies:
+
+```bash
 pip install fastapi uvicorn httpx
+```
+
+Start the API server:
+
+```bash
 uvicorn api.main:app --port 8000
-# 浏览器开 frontend/index.html，控制台执行 WKA.setRole('analyst') 后调 WKA.ask('N3 状态')
-
-# 切 Neo4j 生产后端：见 NEO4J_INTEGRATION.md
-#   System(store_backend="neo4j", neo4j_driver=GraphDatabase.driver(...))
 ```
 
-## 目录结构
+Then open `frontend/index.html` in a browser. The demo client talks to `/api/v1/*`.
 
-```
-wka-fused/
-├── frontend/
-│   ├── index.html              展示层（六视图原型）
-│   └── wka-client.js           ★ 前端 API 客户端：把 mock 数据层换成 fetch /api/v1/*
-│
-├── api/                        ── wka 业务主干 + 网关 ──
-│   ├── main.py                 FastAPI 网关：六视图路由 → System（缺 FastAPI 自动降级为可 import）
-│   ├── system.py               ★ 组合根：构建唯一共享对象图（ingest 与 retrieval 共用引擎 stores）
-│   ├── services_ask.py         ★ 接缝2：GroundedQA = 引擎 Retriever + 权威 OPA/Vault 安全过滤
-│   └── security/rbac.py        Dynamic Security：RBAC + OPA field_visibility + Vault decrypt
-│
-├── adapters/                   ── 三道接缝（融合的核心）──
-│   ├── model_map.py            ★ 接缝1：引擎 dataclass ⇄ wka 存储 schema（唯一翻译点）
-│   └── governed_ingest.py      ★ 接缝3：ingest 产出经 Action 引擎落库（审计写入）
-│
-├── action_engine/              ── wka 业务：唯一写入通道 ──
-│   ├── engine.py               8 Action · validate→sandbox→单事务双时间轴写→writeback
-│   ├── store_base.py         ★ KnowledgeStoreBase 抽象契约（Action 引擎只认它）
-│   ├── store.py                InMemoryKnowledgeStore（测试/无依赖；KnowledgeStore 别名）
-│   └── store_neo4j.py        ★ Neo4jKnowledgeStore 生产实现（双时间轴关系建模）
-│
-├── engine/                     ── wka-scale 引擎（原 pillar1/2/3，已重命名挂载）──
-│   ├── ingest/                 §支柱一 分级抽取 + 多级产物 + 批量 + 增量实体消解
-│   ├── retrieval/              §支柱二 路由 → 混合召回+RRF → Cross-Encoder 精排 → 压缩+置信度门
-│   └── infra/                  §支柱三 HNSW(O(logN)) + int8 量化 + 分片 + BM25 + 图/社区
-│
-├── common/models.py            引擎共享 dataclass（Chunk/WikiPage/Entity/...）
-└── tests/
-    ├── test_closed_loop.py     20 项接缝断言（无依赖）
-    └── test_http.py            9 项 HTTP 断言（TestClient）
+### 3. Optional production-oriented storage mode
+
+To switch ontology storage from the in-memory backend to Neo4j, inject a Neo4j driver into `System(...)`. See [NEO4J_INTEGRATION.md](file:///Users/tc/Workspace/github/knowledge-agent/NEO4J_INTEGRATION.md) for the exact wiring and schema notes.
+
+## Running Tests
+
+Core test commands:
+
+```bash
+python -m tests.test_closed_loop
+python -m tests.test_neo4j_parity
+python -m tests.test_http
+python -m tests.test_agent_extractor
+python -m tests.test_verifier
+python -m tests.bench_embedding
 ```
 
-## 六道接缝（test_closed_loop 逐项验证）
+Notes:
 
-| 接缝 | 实现位置 | 验证内容 |
-|---|---|---|
-| **1. ingest 只经 Action 写本体** | `adapters/governed_ingest.py` | 每次本体写入都过 Action 引擎、进审计日志、带角色 |
-| **2. 增量合并不重复** | `governed_ingest` + `store.merge_object` | d4 重提 N3/代工厂A/EUV → merged=3 created=0；库里 N3 恰好 1 个 |
-| **3. 受控待审不自动** | `governed_ingest.pending_controls` | 受控文档入队 MarkExportControlled，**不自动标记**，需合规 Action |
-| **4. 检索读同一份 stores** | `api/system.py` 组合根 | Retriever 与 ingest 共用引擎 vstore/bm25/graph/wiki |
-| **5. 权威 OPA/Vault 过滤** | `api/services_ask.py` + `rbac.py` | 同一 EUV 查询：compliance 明文 / analyst 脱敏 / viewer 隐去 |
-| **6. Action 强制权限+双时间轴** | `action_engine/engine.py` | analyst 不能 mark(403)；mark 高风险先沙箱；as-of 78K vs 真值 120K |
+- `test_closed_loop` validates the fused seams end to end against the memory backend.
+- `test_neo4j_parity` checks contract parity between the memory store and the Neo4j store.
+- `test_http` exercises the real FastAPI path when the optional HTTP dependencies are present.
+- extractor and verifier tests validate the optional advanced ingest stack.
 
-## 数据如何流过整条链路
+## Repository Layout
 
-```
-上传文档
-  → GovernedIngest.ingest()                              [接缝3]
-      → 引擎 IngestPipeline：分级→多级产物→批量嵌入→增量消解   (填充引擎 stores)
-      → 每个实体 entity_to_object_candidate()             [接缝1: model_map]
-      → ActionEngine.execute('create_object')             (审计 + 单事务)
-      → KnowledgeStore.put_object()                        (本体落库)
-      → WikiPage → wiki_to_mongo() → store.put_wiki()      (父跨度)
-      → 受控信号 → pending_controls (待审)
-
-提问
-  → GroundedQA.answer()                                   [接缝2]
-      → Retriever.retrieve()：路由→混合召回+RRF→精排→压缩门  (读同一引擎 stores) [接缝4]
-      → contexts 带 controlled 标记                         (已修复：标记贯穿漏斗)
-      → apply_field_security() 逐块过 OPA/Vault             [接缝5: 权威安全]
-      → 接地生成 + 引用回链 → 前端
-
-写入(任何修改)
-  → ActionEngine.execute()                                [接缝6]
-      → 权限校验 → 高风险沙箱 → 单事务双时间轴写 → writeback → 审计
+```text
+knowledge-agent/
+├── frontend/                  Browser UI and API client
+├── api/                       FastAPI gateway and composition root
+├── adapters/                  Integration seams between engine and domain model
+├── action_engine/             Audited write path and knowledge store backends
+├── engine/                    Ingest, retrieval, and vector infrastructure
+├── common/                    Shared dataclasses
+├── tests/                     Closed-loop, HTTP, parity, and extractor verification
+├── NEO4J_INTEGRATION.md       Neo4j backend and contract notes
+├── SCALING_INTEGRATION.md     Scaling architecture and advanced extractor wiring
+├── VERIFY_AND_EMBEDDING.md    Self-critique and embedding notes
+└── DEPLOYMENT.md              Deployment and operational runbook
 ```
 
-## 已修复的真实接缝 bug（构建中发现并修正）
+## Core Data Flow
 
-1. **受控标记未贯穿漏斗**：`compress_and_gate` 原来没把 `controlled` 带进 context，导致接缝5 安全过滤"空过"（安全隐患）。已修复为标记贯穿。
-2. **网关权限双重校验且 split 错误**：`name.split('-')[0]` 把 `revise-capacity` 切成 `revise` 误判 403。已改为**权限唯一由 Action 引擎判定**（单一事实源）。
-3. **as-of 双时间轴语义**：统一为 validTime 的"决策时点"语义，匹配前端滑杆直觉。
+```text
+Document upload
+  -> GovernedIngest.ingest()
+  -> IngestPipeline builds chunks / wiki / entities / relations
+  -> model_map translates engine entities into ontology candidates
+  -> ActionEngine executes create or merge actions
+  -> KnowledgeStore persists ontology objects and bitemporal facts
+  -> controlled signals may enter the pending controls queue
 
-## 生产替换（接口不变，换实现）
+Question answering
+  -> GroundedQA.answer()
+  -> Retriever routes, recalls, reranks, and compresses contexts
+  -> field-level security is applied per returned fact
+  -> grounded answer and references are returned to the frontend
 
-| 参考实现 | 生产 |
-|---|---|
-| `HashEmbedder` | BGE-M3 / OpenAI（批量 GPU） |
-| `StubExtractor` | `ClaudeExtractor`（Claude Code + llm-wiki skill，骨架已在 engine/ingest/extract/extractor.py） |
-| `LexicalCrossEncoder` | ms-marco cross-encoder |
-| `VectorStore`(内存) | Qdrant(≤10M) / Milvus IVF-PQ(≥100M) |
-| `KnowledgeStore`(内存) | Neo4j(Object/Link+双时间轴) + Mongo(Wiki) |
-| `_opa_decide`/`_vault_decrypt` | httpx → OPA(:8281) / Vault(:8200) |
-| `ActionEngine`(进程内) | wka-action 服务(:8300) behind /api/v1/actions/* |
-| `_role()` 读 header | JWT 解码（**前端不可自封角色**） |
+Any write path
+  -> ActionEngine.execute()
+  -> permission check -> sandbox for risky actions -> audited bitemporal write
+```
 
-接口签名都没变，换实现即可上生产。
+## Validated Fusion Seams
+
+The closed-loop tests explicitly verify these seams:
+
+| Seam | Implementation | What is validated |
+| --- | --- | --- |
+| Ingest writes ontology only through Action | `adapters/governed_ingest.py` | ontology writes are audited and role-scoped |
+| Incremental merge avoids duplicate objects | governed ingest + merge logic | repeated entities merge instead of duplicating |
+| Controlled documents do not auto-mark themselves | governed ingest pending controls | export-control actions require explicit review |
+| Retrieval reads the same engine stores that ingest fills | `api/system.py` | ingest and retrieval share one engine object graph |
+| Security filtering remains authoritative | `api/services_ask.py`, `api/security/rbac.py` | facts are shown, masked, or dropped by role |
+| Action enforces permission and bitemporal semantics | `action_engine/engine.py` | restricted actions and as-of behavior are enforced |
+
+## Security Model
+
+The security model is intentionally layered:
+
+- API requests derive a role from a demo header in local mode.
+- `GroundedQA` applies field-level filtering before answer assembly.
+- Action execution is the authoritative enforcement point for write permissions.
+- Controlled content is treated specially throughout ingest and answer generation.
+
+Important local-vs-production distinction:
+
+- In local mode, `api/main.py` trusts a `Role ...` header for demo purposes.
+- In production, the repo expects that to be replaced with JWT decoding and real identity propagation.
+
+## Storage Backends
+
+Two knowledge store backends exist behind the same contract:
+
+- `InMemoryKnowledgeStore` for tests and zero-dependency development
+- `Neo4jKnowledgeStore` for production-oriented graph persistence and bitemporal history
+
+The rest of the system is designed to remain unchanged when swapping between the two.
+
+## Production Swap Points
+
+The codebase already names the main placeholders you would replace in production:
+
+| Reference implementation | Production direction |
+| --- | --- |
+| `HashEmbedder` | BGE-M3 or another real embedding backend |
+| `StubExtractor` | `AgentExtractor` or another real LLM-backed extractor |
+| `LexicalCrossEncoder` | a stronger reranker such as MS MARCO cross-encoder |
+| in-memory vector store | Qdrant, Milvus, or another persistent vector backend |
+| in-memory knowledge store | Neo4j plus a wiki/document backend |
+| local role header | JWT-backed authn/authz |
+
+## Documentation Map
+
+For deeper details, start here:
+
+- [DEPLOYMENT.md](file:///Users/tc/Workspace/github/knowledge-agent/DEPLOYMENT.md): deployment profiles, dependencies, environment variables, verification, and production notes
+- [NEO4J_INTEGRATION.md](file:///Users/tc/Workspace/github/knowledge-agent/NEO4J_INTEGRATION.md): Neo4j schema, parity model, and integration details
+- [SCALING_INTEGRATION.md](file:///Users/tc/Workspace/github/knowledge-agent/SCALING_INTEGRATION.md): scaling pillars, advanced extraction, and model orchestration
+- [VERIFY_AND_EMBEDDING.md](file:///Users/tc/Workspace/github/knowledge-agent/VERIFY_AND_EMBEDDING.md): self-critique pipeline and embedding notes
+
+## Current Status
+
+This repository already demonstrates a real fused architecture, but not every component is production-ready out of the box.
+
+Today, the strongest ready-to-run pieces are:
+
+- the fused composition root
+- the Action-based write discipline
+- in-memory closed-loop verification
+- the Neo4j contract and parity tests
+- the FastAPI gateway demo path
+
+The main productionization work still expected by the code and docs is:
+
+- real auth instead of demo role headers
+- concrete external policy and secret backends
+- a production embedding model
+- a production extractor and verifier runtime
+- deployment packaging around the service graph
