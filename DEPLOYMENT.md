@@ -9,7 +9,35 @@ It covers four operating profiles:
 3. Neo4j-backed deployment mode
 4. advanced extractor and embedder mode
 
-The repo does not yet ship with a lockfile, container image, or infra templates, so this document focuses on runtime wiring, dependency choices, environment variables, and verification steps.
+The repo now ships with dependency profiles, a Dockerfile, docker-compose profiles, and a GitHub Actions CI workflow. This document focuses on runtime wiring, environment variables, and verification steps.
+
+
+## 0. Production Hardening Defaults
+
+The HTTP gateway is no longer intended to trust client-assigned roles in production.
+Use these settings outside local demos:
+
+```bash
+WKA_AUTH_MODE=jwt
+WKA_ALLOW_ROLE_HEADER=0
+WKA_JWT_SECRET=<strong-shared-secret-or-mounted-secret>
+WKA_CORS_ORIGINS=https://your-frontend.example.com
+```
+
+Local tests and demos can keep `WKA_AUTH_MODE=dev` and `WKA_ALLOW_ROLE_HEADER=1`,
+which preserves the `Authorization: Role analyst` compatibility path.
+
+Optional policy integrations are fail-closed for controlled content:
+
+```bash
+WKA_OPA_URL=http://opa:8181
+WKA_VAULT_URL=http://vault:8200
+WKA_VAULT_TOKEN=<token>
+```
+
+The action engine writes an in-process audit mirror and also persists audit events via
+the configured knowledge store. Retrieval cache is invalidated after successful ingest
+and after executed governed actions.
 
 ## 1. Deployment Profiles
 
@@ -40,7 +68,8 @@ Use this when you want a real HTTP entry point for the browser frontend or anoth
 Required packages:
 
 ```bash
-pip install fastapi uvicorn httpx
+pip install -r requirements-http.txt
+# or: pip install .[http]
 ```
 
 Start the server:
@@ -70,7 +99,8 @@ Use this when you want the ontology and bitemporal write path to persist in Neo4
 Required packages:
 
 ```bash
-pip install fastapi uvicorn httpx neo4j
+pip install -r requirements-http.txt -r requirements-neo4j.txt
+# or: pip install .[http,neo4j]
 ```
 
 Runtime wiring comes from `api/system.py`:
@@ -91,7 +121,7 @@ Important behavior:
 - `Retriever` still reads the engine-side shared stores
 - only the knowledge store backend changes
 
-See also: [NEO4J_INTEGRATION.md](file:///Users/tc/Workspace/github/knowledge-agent/NEO4J_INTEGRATION.md)
+See also: [NEO4J_INTEGRATION.md](NEO4J_INTEGRATION.md)
 
 ### Profile D: Advanced extractor and embedder mode
 
@@ -100,22 +130,21 @@ Use this when you want real extractor orchestration, self-critique, and stronger
 Optional package families:
 
 ```bash
-pip install neo4j
-pip install FlagEmbedding
-# or
-pip install sentence-transformers
+pip install -r requirements-neo4j.txt
+pip install -r requirements-embeddings.txt
+# or: pip install .[neo4j,embeddings]
 ```
 
 The advanced path is documented in:
 
-- [SCALING_INTEGRATION.md](file:///Users/tc/Workspace/github/knowledge-agent/SCALING_INTEGRATION.md)
-- [VERIFY_AND_EMBEDDING.md](file:///Users/tc/Workspace/github/knowledge-agent/VERIFY_AND_EMBEDDING.md)
+- [SCALING_INTEGRATION.md](SCALING_INTEGRATION.md)
+- [VERIFY_AND_EMBEDDING.md](VERIFY_AND_EMBEDDING.md)
 
 This mode is optional. The repo is still runnable without it.
 
 ## 2. Runtime Components
 
-The runtime is anchored by the `System` composition root in [system.py](file:///Users/tc/Workspace/github/knowledge-agent/api/system.py).
+The runtime is anchored by the `System` composition root in [system.py](api/system.py).
 
 `System(...)` wires together:
 
@@ -151,8 +180,11 @@ DEEPSEEK_LOCAL_URL=http://vllm:8000/v1
 DEEPSEEK_MODEL=deepseek-v3
 GLM_LOCAL_URL=http://ollama:11434/v1
 GLM_MODEL=glm-4
-LOCAL_LLM_HOSTS=vllm,ollama,wka-vllm
+LOCAL_LLM_HOSTS=vllm,ollama,wka-vllm,wka-ollama
 CLAUDE_CODE_LOCAL_ONLY=1
+WKA_AUTH_MODE=jwt
+WKA_ALLOW_ROLE_HEADER=0
+WKA_CORS_ORIGINS=https://your-frontend.example.com
 ```
 
 Operational meaning:
@@ -219,18 +251,21 @@ There is a sharp distinction between demo mode and production mode.
 
 ### What the code does today
 
-In [main.py](file:///Users/tc/Workspace/github/knowledge-agent/api/main.py):
+In [main.py](api/main.py):
 
-- local auth trusts a header like `Role analyst`
-- CORS is configured with `allow_origins=["*"]`
+- production mode supports `Authorization: Bearer <jwt>` with server-side role mapping
+- local/demo mode can still permit `Authorization: Role analyst` for zero-dependency tests
+- CORS is read from `WKA_CORS_ORIGINS` and defaults to localhost origins only
 - controlled facts may be masked or dropped depending on role
 
 ### What production should do
 
-Before exposing the service publicly, replace or front these behaviors:
+Before exposing the service publicly, enforce these settings:
 
-- replace demo role headers with JWT or another real identity mechanism
-- restrict CORS to known origins
+- set `WKA_AUTH_MODE=jwt`
+- set `WKA_ALLOW_ROLE_HEADER=0`
+- set a strong `WKA_JWT_SECRET` or mount it from a secret manager
+- restrict `WKA_CORS_ORIGINS` to known frontend origins
 - ensure the frontend cannot self-assign roles
 - back policy and decryption hooks with real OPA and Vault implementations
 
@@ -311,3 +346,21 @@ For the least risky rollout, use this sequence:
 5. enable advanced extractor and embedder components only after the base service is stable
 
 That order matches the current architecture: first preserve the fused seams, then swap the implementation details behind them.
+
+
+## 8. Container and CI Entry Points
+
+Build and run the app profile locally:
+
+```bash
+docker compose --profile app up --build
+```
+
+Run only Neo4j for integration experiments:
+
+```bash
+docker compose --profile neo4j up neo4j
+```
+
+The CI workflow in `.github/workflows/ci.yml` runs the zero-dependency core checks and
+a separate HTTP job with FastAPI/httpx installed.

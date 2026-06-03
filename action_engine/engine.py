@@ -7,7 +7,7 @@ wka-action service (:8300) behind /api/v1/actions/*; the contract is identical:
   Step1 validate (perm + business rules) → Step2 sandbox (high-risk) →
   Step3 single-tx bitemporal write (append, never overwrite) → Step4 writeback + side-effects."""
 from __future__ import annotations
-import time
+import hashlib, json, time, uuid
 from api.security.rbac import can_action
 
 # action → (allowed roles, high-risk sandbox)
@@ -32,9 +32,10 @@ class ActionError(Exception):
 class ActionEngine:
     def __init__(self, store):
         self.store = store              # KnowledgeStore (adapter 3 backs this)
-        self.audit: list = []
+        self.audit: list = []           # in-process mirror for tests/UI
 
-    def execute(self, name: str, params: dict, role: str, confirmed: bool = False) -> dict:
+    def execute(self, name: str, params: dict, role: str, confirmed: bool = False,
+                actor: str = "system", request_id: str | None = None) -> dict:
         spec = SPEC.get(name)
         if not spec:
             raise ActionError(f"unknown action {name}")
@@ -54,9 +55,27 @@ class ActionEngine:
         # Step 3 — single-transaction bitemporal write (append, never overwrite)
         result = self._apply(name, params)
 
-        # Step 4 — writeback + audit (谁/何时/依据)
-        self.audit.append({"action": name, "role": role, "at": time.time(), "params": params})
-        return {"status": "executed", "action": name, "result": result}
+        # Step 4 — writeback + durable audit (谁/何时/依据)
+        audit = self._audit_record(name, params, role, actor, request_id, result)
+        self.audit.append(audit)
+        if hasattr(self.store, "append_audit"):
+            self.store.append_audit(audit)
+        return {"status": "executed", "action": name, "result": result, "audit_id": audit["id"]}
+
+    def _audit_record(self, name, params, role, actor, request_id, result):
+        canonical = json.dumps(params, sort_keys=True, ensure_ascii=False, default=str)
+        return {
+            "id": request_id or str(uuid.uuid4()),
+            "schemaVersion": 1,
+            "action": name,
+            "role": role,
+            "actor": actor,
+            "at": time.time(),
+            "params": params,
+            "paramsHash": hashlib.sha256(canonical.encode()).hexdigest(),
+            "result": result,
+            "decision": "executed",
+        }
 
     def _validate(self, name, p):
         if name == "advance-roadmap":

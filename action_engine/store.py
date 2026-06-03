@@ -15,6 +15,7 @@ class InMemoryKnowledgeStore(KnowledgeStoreBase):
         self.wiki: dict[str, dict] = {}          # _id → wiki doc
         self.capacity_obs: dict[str, list] = {}  # objId → [observation,...] (bitemporal)
         self.status_events: list = []
+        self.audit_events: list = []
 
     # ── Objects ──
     def get_object(self, oid): return self.objects.get(oid)
@@ -81,6 +82,13 @@ class InMemoryKnowledgeStore(KnowledgeStoreBase):
         o = self.objects.get(node_id)
         if o:
             o["status"] = status
+
+    # ── Audit ──
+    def append_audit(self, record: dict):
+        self.audit_events.append(dict(record))
+
+    def list_audit(self, limit: int = 100):
+        return list(self.audit_events[-limit:])
 
     def count_objects_by_title(self, title):
         return sum(1 for o in self.objects.values() if o.get("title") == title)

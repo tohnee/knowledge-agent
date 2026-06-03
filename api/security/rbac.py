@@ -6,6 +6,7 @@ Synchronous reference implementation (OPA/Vault calls stubbed as pure functions 
 whole闭环 runs in tests). In production swap `_opa_decide`/`_vault_decrypt` for httpx
 calls to OPA(:8281) and Vault(:8200) — signatures unchanged."""
 from __future__ import annotations
+import base64, json, os, urllib.request
 
 ROLES = {
     "viewer":     {"actions": []},
@@ -20,16 +21,48 @@ def can_action(role: str, action: str) -> bool:
 
 
 def _opa_decide(role: str, controlled: bool) -> str:
-    """Mirror of opa-policies/wka.rego field_visibility. clear|summary|masked|hidden."""
+    """Return field visibility. Uses OPA when WKA_OPA_URL is set; otherwise local policy.
+
+    OPA failures are fail-closed for controlled content so a policy outage cannot leak
+    plaintext. Non-controlled content remains clear.
+    """
     if not controlled:
         return "clear"
+    opa_url = os.getenv("WKA_OPA_URL", "").rstrip("/")
+    if opa_url:
+        try:
+            payload = json.dumps({"input": {"role": role, "controlled": controlled}}).encode()
+            req = urllib.request.Request(
+                opa_url + "/v1/data/wka/field_visibility", data=payload,
+                headers={"Content-Type": "application/json"})
+            with urllib.request.urlopen(req, timeout=float(os.getenv("WKA_OPA_TIMEOUT", "2"))) as r:
+                data = json.loads(r.read())
+            decision = data.get("result")
+            if decision in {"clear", "summary", "masked", "hidden"}:
+                return decision
+        except Exception:
+            return "hidden"
     return {"compliance": "clear", "strategy": "summary",
             "analyst": "masked", "viewer": "hidden"}.get(role, "hidden")
 
 
 def _vault_decrypt(ciphertext: str) -> str:
-    # prod: POST Vault /v1/transit/decrypt/wka — here pass-through
-    return ciphertext
+    vault_url = os.getenv("WKA_VAULT_URL", "").rstrip("/")
+    token = os.getenv("WKA_VAULT_TOKEN", "")
+    if not vault_url:
+        return ciphertext
+    try:
+        payload = json.dumps({"ciphertext": ciphertext}).encode()
+        req = urllib.request.Request(
+            vault_url + "/v1/transit/decrypt/wka", data=payload,
+            headers={"Content-Type": "application/json", "X-Vault-Token": token})
+        with urllib.request.urlopen(req, timeout=float(os.getenv("WKA_VAULT_TIMEOUT", "2"))) as r:
+            data = json.loads(r.read())
+        plaintext = data.get("data", {}).get("plaintext", "")
+        return base64.b64decode(plaintext).decode() if plaintext else ciphertext
+    except Exception:
+        # Fail closed for encrypted fields: never expose ciphertext as if it were cleartext.
+        return "[解密失败]"
 
 
 def field_visible(role: str, controlled: bool) -> str:

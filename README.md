@@ -60,7 +60,7 @@ python -m tests.test_neo4j_parity
 Install the minimal API dependencies:
 
 ```bash
-pip install fastapi uvicorn httpx
+pip install -r requirements-http.txt
 ```
 
 Start the API server:
@@ -73,7 +73,19 @@ Then open `frontend/index.html` in a browser. The demo client talks to `/api/v1/
 
 ### 3. Optional production-oriented storage mode
 
-To switch ontology storage from the in-memory backend to Neo4j, inject a Neo4j driver into `System(...)`. See [NEO4J_INTEGRATION.md](file:///Users/tc/Workspace/github/knowledge-agent/NEO4J_INTEGRATION.md) for the exact wiring and schema notes.
+To switch ontology storage from the in-memory backend to Neo4j, install `requirements-neo4j.txt` and inject a Neo4j driver into `System(...)`. See [NEO4J_INTEGRATION.md](NEO4J_INTEGRATION.md) for the exact wiring and schema notes.
+
+
+## Production Hardening Added
+
+The repository now includes baseline productionization assets:
+
+- `pyproject.toml` plus optional dependency requirement files for HTTP, Neo4j, and embedding profiles.
+- `Dockerfile` and `docker-compose.yml` profiles for app, Neo4j, and local LLM services.
+- `.github/workflows/ci.yml` for core and HTTP test jobs.
+- JWT-capable server-side role mapping, restricted CORS defaults, Pydantic request schemas, durable audit hooks, and retrieval cache invalidation after writes.
+
+Local tests keep the `Authorization: Role <role>` compatibility path by default. Production should set `WKA_AUTH_MODE=jwt`, `WKA_ALLOW_ROLE_HEADER=0`, and a strict `WKA_CORS_ORIGINS` value.
 
 ## Running Tests
 
@@ -85,6 +97,7 @@ python -m tests.test_neo4j_parity
 python -m tests.test_http
 python -m tests.test_agent_extractor
 python -m tests.test_verifier
+python -m tests.test_hardening
 python -m tests.bench_embedding
 ```
 
@@ -94,6 +107,7 @@ Notes:
 - `test_neo4j_parity` checks contract parity between the memory store and the Neo4j store.
 - `test_http` exercises the real FastAPI path when the optional HTTP dependencies are present.
 - extractor and verifier tests validate the optional advanced ingest stack.
+- `test_hardening` validates JWT role mapping, Role-header lockdown, cache invalidation, durable audit persistence, and filtered HNSW behavior.
 
 ## Repository Layout
 
@@ -151,15 +165,15 @@ The closed-loop tests explicitly verify these seams:
 
 The security model is intentionally layered:
 
-- API requests derive a role from a demo header in local mode.
+- API requests derive roles from JWT claims in production mode, with a Role-header compatibility path only for local demos/tests.
 - `GroundedQA` applies field-level filtering before answer assembly.
 - Action execution is the authoritative enforcement point for write permissions.
 - Controlled content is treated specially throughout ingest and answer generation.
 
 Important local-vs-production distinction:
 
-- In local mode, `api/main.py` trusts a `Role ...` header for demo purposes.
-- In production, the repo expects that to be replaced with JWT decoding and real identity propagation.
+- In local mode, `api/main.py` can allow a `Role ...` header for demo purposes.
+- In production, set `WKA_AUTH_MODE=jwt` and `WKA_ALLOW_ROLE_HEADER=0` so roles come from server-validated JWT claims.
 
 ## Storage Backends
 
@@ -187,10 +201,10 @@ The codebase already names the main placeholders you would replace in production
 
 For deeper details, start here:
 
-- [DEPLOYMENT.md](file:///Users/tc/Workspace/github/knowledge-agent/DEPLOYMENT.md): deployment profiles, dependencies, environment variables, verification, and production notes
-- [NEO4J_INTEGRATION.md](file:///Users/tc/Workspace/github/knowledge-agent/NEO4J_INTEGRATION.md): Neo4j schema, parity model, and integration details
-- [SCALING_INTEGRATION.md](file:///Users/tc/Workspace/github/knowledge-agent/SCALING_INTEGRATION.md): scaling pillars, advanced extraction, and model orchestration
-- [VERIFY_AND_EMBEDDING.md](file:///Users/tc/Workspace/github/knowledge-agent/VERIFY_AND_EMBEDDING.md): self-critique pipeline and embedding notes
+- [DEPLOYMENT.md](DEPLOYMENT.md): deployment profiles, dependencies, environment variables, verification, and production notes
+- [NEO4J_INTEGRATION.md](NEO4J_INTEGRATION.md): Neo4j schema, parity model, and integration details
+- [SCALING_INTEGRATION.md](SCALING_INTEGRATION.md): scaling pillars, advanced extraction, and model orchestration
+- [VERIFY_AND_EMBEDDING.md](VERIFY_AND_EMBEDDING.md): self-critique pipeline and embedding notes
 
 ## Current Status
 

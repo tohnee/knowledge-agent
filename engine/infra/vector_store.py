@@ -59,11 +59,20 @@ class Shard:
         """HNSW (O(log n)) when enabled, else brute-force (O(n), exact).
         Returns [(id, score, meta)]. `filt(meta)->bool` does metadata pre-filtering."""
         qn = _l2norm(q)
-        if self._hnsw is not None and filt is None:
-            # fast path: HNSW ANN (over-fetch a bit for recall, then trim)
-            hits = self._hnsw.search(qn, max(k, 30))
-            return [(cid, sim, self.meta[cid]) for cid, sim in hits[:k]]
-        # brute-force (also used when a metadata filter is active)
+        if self._hnsw is not None:
+            if filt is None:
+                # fast path: HNSW ANN (over-fetch a bit for recall, then trim)
+                hits = self._hnsw.search(qn, max(k, 30))
+                return [(cid, sim, self.meta[cid]) for cid, sim in hits[:k]]
+            # Filter-aware ANN path: over-fetch from HNSW, apply metadata security/tenant
+            # filters, then fall back to exact scan only if ANN cannot produce enough
+            # eligible rows. This keeps filtered queries on the ANN path for common cases.
+            fetch = min(len(self.meta), max(k * 8, 100))
+            hits = self._hnsw.search(qn, fetch)
+            filtered = [(cid, sim, self.meta[cid]) for cid, sim in hits if filt(self.meta[cid])]
+            if len(filtered) >= k or fetch >= len(self.meta):
+                return filtered[:k]
+        # exact fallback
         scored = []
         for cid in self._ids():
             m = self.meta[cid]

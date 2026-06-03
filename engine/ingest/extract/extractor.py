@@ -44,7 +44,11 @@ class ClaudeExtractor(Extractor):
         return self._assemble(doc, data, budget)
 
     def _chunk(self, doc): return _semantic_chunk(doc)
-    def _assemble(self, doc, data, budget): ...      # map model JSON → models (omitted)
+    def _assemble(self, doc, data, budget):
+        raise NotImplementedError(
+            "ClaudeExtractor is deprecated and intentionally not production-wired. "
+            "Use engine.ingest.extract.agent_extractor.AgentExtractor, which implements "
+            "schema validation, verifier gating, and controlled-content egress rules.")
 
 
 # ── Test/dev: deterministic, network-free ──

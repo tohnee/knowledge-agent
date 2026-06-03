@@ -16,6 +16,7 @@ class _Graph:
         self.capacity = {}       # obj_id → [rel props]
         self.status = []         # {node,status,...}
         self.events = []         # control/status events
+        self.audit = []          # AuditEvent nodes
 
 
 class _Session:
@@ -135,6 +136,20 @@ class _Session:
             g.objects.setdefault(p["id"], {"id": p["id"]})["status"] = p["s"]
             g.status.append({"node": p["id"], "status": p["s"], "eventDate": p["d"]})
             return _Res([])
+
+
+        # ── append_audit / list_audit ──
+        if c.startswith("CREATE (:AuditEvent"):
+            g.audit.append({
+                "id": p["id"], "schemaVersion": p["schema"], "action": p["action"],
+                "role": p["role"], "actor": p["actor"], "at": p["at"],
+                "paramsHash": p["paramsHash"], "result": p["result"],
+                "decision": p["decision"], "params": p["params"],
+            })
+            return _Res([])
+        if "MATCH (a:AuditEvent)" in c and "RETURN a AS a" in c:
+            rows = sorted(g.audit, key=lambda r: r.get("at", 0), reverse=True)[:p.get("limit", 100)]
+            return _Res([{"a": dict(r)} for r in rows])
 
         # ── count_objects_by_title ──
         if "MATCH (o:Object {title:$t}) RETURN count(o)" in c:
