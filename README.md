@@ -84,8 +84,9 @@ The repository now includes baseline productionization assets:
 - `Dockerfile` and `docker-compose.yml` profiles for app, Neo4j, and local LLM services.
 - `.github/workflows/ci.yml` for core and HTTP test jobs.
 - JWT-capable server-side role mapping, restricted CORS defaults, Pydantic request schemas, durable audit hooks, and retrieval cache invalidation after writes.
+- Environment-driven API startup via `api/config.py`, so production containers fail fast unless JWT auth, strict CORS, strong secrets, and the Neo4j backend are configured.
 
-Local tests keep the `Authorization: Role <role>` compatibility path by default. Production should set `WKA_AUTH_MODE=jwt`, `WKA_ALLOW_ROLE_HEADER=0`, and a strict `WKA_CORS_ORIGINS` value.
+Local tests keep the `Authorization: Role <role>` compatibility path by default. Production should set `WKA_ENV=production`, `WKA_STORE_BACKEND=neo4j`, `WKA_AUTH_MODE=jwt`, `WKA_ALLOW_ROLE_HEADER=0`, a strong `WKA_JWT_SECRET`, a strong `NEO4J_PASSWORD`, and a strict `WKA_CORS_ORIGINS` value.
 
 ## Running Tests
 
@@ -98,6 +99,7 @@ python -m tests.test_http
 python -m tests.test_agent_extractor
 python -m tests.test_verifier
 python -m tests.test_hardening
+python -m tests.test_production_config
 python -m tests.bench_embedding
 ```
 
@@ -108,6 +110,7 @@ Notes:
 - `test_http` exercises the real FastAPI path when the optional HTTP dependencies are present.
 - extractor and verifier tests validate the optional advanced ingest stack.
 - `test_hardening` validates JWT role mapping, Role-header lockdown, cache invalidation, durable audit persistence, and filtered HNSW behavior.
+- `test_production_config` validates environment-driven startup defaults and fail-fast production checks.
 
 ## Repository Layout
 
@@ -220,8 +223,8 @@ Today, the strongest ready-to-run pieces are:
 
 The main productionization work still expected by the code and docs is:
 
-- real auth instead of demo role headers
+- connecting JWT validation to your production identity provider / key rotation process
 - concrete external policy and secret backends
 - a production embedding model
 - a production extractor and verifier runtime
-- deployment packaging around the service graph
+- a persistent production vector/document store beyond the in-process reference implementation

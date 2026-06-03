@@ -22,6 +22,10 @@ jobs:
         run: python -m tests.test_agent_extractor
       - name: Verifier contract
         run: python -m tests.test_verifier
+      - name: Production hardening
+        run: python -m tests.test_hardening
+      - name: Production config
+        run: python -m tests.test_production_config
       - name: Embedding benchmark contract
         run: python -m tests.bench_embedding
 

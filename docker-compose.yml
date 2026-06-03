@@ -2,12 +2,16 @@ services:
   app:
     build: .
     environment:
+      WKA_ENV: ${WKA_ENV:-production}
       WKA_AUTH_MODE: ${WKA_AUTH_MODE:-jwt}
       WKA_ALLOW_ROLE_HEADER: ${WKA_ALLOW_ROLE_HEADER:-0}
-      WKA_JWT_SECRET: ${WKA_JWT_SECRET:-change-me-dev-secret}
-      WKA_CORS_ORIGINS: ${WKA_CORS_ORIGINS:-http://localhost:8000}
+      WKA_STORE_BACKEND: ${WKA_STORE_BACKEND:-neo4j}
+      WKA_JWT_SECRET: ${WKA_JWT_SECRET:?set WKA_JWT_SECRET to a strong secret}
+      WKA_CORS_ORIGINS: ${WKA_CORS_ORIGINS:?set WKA_CORS_ORIGINS to your frontend origin}
       NEO4J_URI: bolt://neo4j:7687
-      NEO4J_PASSWORD: ${NEO4J_PASSWORD:-change-me}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set NEO4J_PASSWORD to a strong password}
+      NEO4J_DATABASE: ${NEO4J_DATABASE:-neo4j}
       DEEPSEEK_LOCAL_URL: http://vllm:8000/v1
       GLM_LOCAL_URL: http://ollama:11434/v1
       LOCAL_LLM_HOSTS: vllm,ollama,wka-vllm,wka-ollama
@@ -16,18 +20,26 @@ services:
       - "8000:8000"
     depends_on:
       neo4j:
-        condition: service_started
+        condition: service_healthy
     profiles: ["app"]
 
   neo4j:
     image: neo4j:5-community
     environment:
-      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-change-me}
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:?set NEO4J_PASSWORD to a strong password}
+      NEO4J_USER: ${NEO4J_USER:-neo4j}
+      NEO4J_PASSWORD: ${NEO4J_PASSWORD:?set NEO4J_PASSWORD to a strong password}
     ports:
       - "7474:7474"
       - "7687:7687"
     volumes:
       - neo4j-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", 'cypher-shell -u "$${NEO4J_USER:-neo4j}" -p "$${NEO4J_PASSWORD}" "RETURN 1" || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
     profiles: ["app", "neo4j"]
 
   vllm:

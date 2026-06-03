@@ -16,12 +16,15 @@ try:
 except Exception:
     _HAS_FASTAPI = False
 
-from api.system import System
+from api.config import ProductionConfigError, build_system_from_env
 from api.security.auth import AuthError, authenticate_authorization
 from api.security.rbac import ROLES, apply_field_security
 from common.models import Document, SourceTier
 
-SYS = System()
+try:
+    SYS, RUNTIME_CONFIG = build_system_from_env()
+except ProductionConfigError as exc:
+    raise RuntimeError(f"invalid runtime configuration: {exc}") from exc
 
 
 def _principal(authorization: str):
@@ -54,7 +57,14 @@ if _HAS_FASTAPI:
 
     @app.get("/api/v1/health")
     def health():
-        return {"status": "ok", "service": "wka-fused", "auth_mode": os.getenv("WKA_AUTH_MODE", "dev")}
+        return {
+            "status": "ok",
+            "service": "wka-fused",
+            "env": RUNTIME_CONFIG.env,
+            "auth_mode": RUNTIME_CONFIG.auth_mode,
+            "store_backend": RUNTIME_CONFIG.store_backend,
+            "hnsw": RUNTIME_CONFIG.use_hnsw,
+        }
 
     # ① Sources — upload + build wiki (governed ingest)
     @app.post("/api/v1/documents/upload")
