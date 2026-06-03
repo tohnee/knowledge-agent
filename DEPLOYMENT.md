@@ -18,10 +18,13 @@ The HTTP gateway is no longer intended to trust client-assigned roles in product
 Use these settings outside local demos:
 
 ```bash
+WKA_ENV=production
+WKA_STORE_BACKEND=neo4j
 WKA_AUTH_MODE=jwt
 WKA_ALLOW_ROLE_HEADER=0
 WKA_JWT_SECRET=<strong-shared-secret-or-mounted-secret>
 WKA_CORS_ORIGINS=https://your-frontend.example.com
+NEO4J_PASSWORD=<strong-graph-password-or-mounted-secret>
 ```
 
 Local tests and demos can keep `WKA_AUTH_MODE=dev` and `WKA_ALLOW_ROLE_HEADER=1`,
@@ -34,6 +37,8 @@ WKA_OPA_URL=http://opa:8181
 WKA_VAULT_URL=http://vault:8200
 WKA_VAULT_TOKEN=<token>
 ```
+
+The HTTP gateway is wired by `api/config.py`. When `WKA_ENV=production`, startup fails fast if JWT auth, strict CORS, strong secrets, or the Neo4j backend are missing. This prevents accidentally publishing the local in-memory/demo-role mode.
 
 The action engine writes an in-process audit mirror and also persists audit events via
 the configured knowledge store. Retrieval cache is invalidated after successful ingest
@@ -63,7 +68,7 @@ This is the best starting point for validating the business seams before you dep
 
 ### Profile B: FastAPI service mode
 
-Use this when you want a real HTTP entry point for the browser frontend or another client.
+Use this when you want a real HTTP entry point for the browser frontend or another client. In dev mode, the gateway defaults to the in-memory backend and local role headers so the browser demo and tests remain simple.
 
 Required packages:
 
@@ -94,7 +99,7 @@ Frontend notes:
 
 ### Profile C: Neo4j-backed deployment mode
 
-Use this when you want the ontology and bitemporal write path to persist in Neo4j instead of memory.
+Use this when you want the ontology and bitemporal write path to persist in Neo4j instead of memory. The production Docker/Compose path now selects this backend through environment variables instead of leaving `api.main` on the in-memory default.
 
 Required packages:
 
@@ -256,15 +261,19 @@ In [main.py](api/main.py):
 - production mode supports `Authorization: Bearer <jwt>` with server-side role mapping
 - local/demo mode can still permit `Authorization: Role analyst` for zero-dependency tests
 - CORS is read from `WKA_CORS_ORIGINS` and defaults to localhost origins only
+- `api/config.py` rejects production startup with demo auth, wildcard/localhost CORS, weak secrets, or the memory store
 - controlled facts may be masked or dropped depending on role
 
 ### What production should do
 
 Before exposing the service publicly, enforce these settings:
 
+- set `WKA_ENV=production`
+- set `WKA_STORE_BACKEND=neo4j`
 - set `WKA_AUTH_MODE=jwt`
 - set `WKA_ALLOW_ROLE_HEADER=0`
 - set a strong `WKA_JWT_SECRET` or mount it from a secret manager
+- set a strong `NEO4J_PASSWORD` or mount it from a secret manager
 - restrict `WKA_CORS_ORIGINS` to known frontend origins
 - ensure the frontend cannot self-assign roles
 - back policy and decryption hooks with real OPA and Vault implementations
@@ -296,11 +305,10 @@ Reasonably production-shaped:
 
 Still placeholder or intentionally simplified by default:
 
-- header-based demo auth
-- permissive CORS
-- hash-based default embeddings
+- external IdP/JWKS integration beyond the current HS256 JWT verifier
+- hash-based default embeddings in zero-dependency mode
 - stub extractor as the no-dependency default
-- local test/demo-oriented packaging
+- production-grade persistent vector/document store selection beyond the in-process reference store
 
 ## 9. Verification Checklist
 
