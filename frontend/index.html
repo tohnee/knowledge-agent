@@ -1,0 +1,2167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>SemiKB · 半导体知识操作系统</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Sora:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* OpenAI/Gemini-inspired tech palette: near-black canvas, soft surfaces, electric accents */
+  --bg:#f6f7f9;
+  --bg-grad1:#eef1f6;
+  --surface:#ffffff;
+  --surface2:#f9fafb;
+  --surface3:#f1f3f7;
+  --line:#e6e9ef;
+  --line2:#d9dee7;
+  --ink:#0d1117;
+  --ink2:#1f2733;
+  --muted:#5b6573;
+  --faint:#8a93a3;
+  --ghost:#aeb6c2;
+
+  /* Gemini-style gradient accent (blue→violet→pink) */
+  --g1:#4587f6;
+  --g2:#7c5cf0;
+  --g3:#c95bd6;
+  --grad:linear-gradient(120deg,#4587f6 0%,#7c5cf0 48%,#c95bd6 100%);
+  --grad-soft:linear-gradient(120deg,rgba(69,135,246,.12),rgba(124,92,240,.10),rgba(201,91,214,.10));
+
+  /* semantic */
+  --blue:#3b7ff5; --blue-soft:#eaf1fe;
+  --violet:#7c5cf0; --violet-soft:#f0ecfe;
+  --teal:#0fae9b; --teal-soft:#e3f7f3;
+  --amber:#d98a1f; --amber-soft:#fdf2e0;
+  --red:#e15a6d; --red-soft:#fdecef;
+  --green:#23a06b; --green-soft:#e6f6ee;
+  --pink:#c95bd6; --pink-soft:#fbecfd;
+
+  /* tier colors */
+  --official:#0fae9b;
+  --analyst:#d98a1f;
+  --rumor:#e15a6d;
+
+  /* graph dark canvas */
+  --graph:#0b0e14;
+  --graph2:#11151f;
+  --graph-line:#222a3a;
+  --graph-ink:#dfe6f0;
+
+  --shadow-sm:0 1px 2px rgba(16,24,40,.05),0 1px 3px rgba(16,24,40,.04);
+  --shadow:0 4px 16px rgba(16,24,40,.07),0 2px 6px rgba(16,24,40,.04);
+  --shadow-lg:0 24px 60px rgba(16,24,40,.13),0 8px 24px rgba(16,24,40,.07);
+  --shadow-glow:0 0 0 1px rgba(124,92,240,.12),0 12px 40px rgba(124,92,240,.16);
+
+  --mono:'IBM Plex Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:'Inter',-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;
+  --display:'Sora','Inter',sans-serif;
+  --r:14px; --r-lg:20px; --r-sm:9px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--sans);color:var(--ink);overflow:hidden;font-size:14px;
+  background:
+    radial-gradient(1100px 600px at 88% -12%,rgba(124,92,240,.10),transparent 58%),
+    radial-gradient(900px 500px at 8% -8%,rgba(69,135,246,.09),transparent 55%),
+    radial-gradient(700px 500px at 60% 120%,rgba(201,91,214,.06),transparent 60%),
+    linear-gradient(180deg,var(--bg-grad1),var(--bg));
+  -webkit-font-smoothing:antialiased;
+}
+button,input,textarea,select{font-family:inherit;font-size:inherit}
+button{cursor:pointer;border:none;background:none}
+::-webkit-scrollbar{width:11px;height:11px}
+::-webkit-scrollbar-thumb{background:#cdd4df;border-radius:8px;border:3px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-thumb:hover{background:#b3bccb;background-clip:padding-box}
+::-webkit-scrollbar-track{background:transparent}
+
+.app{height:100vh;display:grid;grid-template-rows:64px 1fr}
+
+/* ============ Topbar ============ */
+.topbar{
+  display:flex;align-items:center;gap:16px;padding:0 20px;
+  background:rgba(255,255,255,.82);backdrop-filter:blur(20px) saturate(1.4);
+  border-bottom:1px solid var(--line);position:relative;z-index:40;
+}
+.brand{display:flex;align-items:center;gap:12px;min-width:248px}
+.logo{
+  width:38px;height:38px;border-radius:11px;position:relative;flex:none;
+  background:var(--grad);box-shadow:0 6px 20px rgba(124,92,240,.32);
+  display:grid;place-items:center;
+}
+.logo svg{width:21px;height:21px}
+.brand-title b{font-family:var(--display);font-size:17px;font-weight:700;letter-spacing:-.02em;display:block;line-height:1.1}
+.brand-title small{font-family:var(--mono);font-size:9.5px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase}
+.kb-pill{
+  display:flex;align-items:center;gap:8px;padding:7px 13px;border-radius:999px;
+  background:var(--surface3);border:1px solid var(--line);color:var(--muted);font-size:12px;font-weight:500;
+}
+.kb-pill .dot{width:7px;height:7px;border-radius:50%;background:var(--teal);box-shadow:0 0 0 3px rgba(15,174,155,.16)}
+.search{flex:1;max-width:520px;position:relative}
+.search input{
+  width:100%;border:1px solid var(--line2);background:var(--surface);border-radius:11px;
+  padding:10px 44px 10px 40px;outline:none;color:var(--ink);font-size:13px;transition:.18s;
+}
+.search input:focus{border-color:var(--violet);box-shadow:0 0 0 4px rgba(124,92,240,.12)}
+.search input::placeholder{color:var(--ghost)}
+.search .ic{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--faint);display:flex}
+.search .kbd{position:absolute;right:11px;top:50%;transform:translateY(-50%);font-family:var(--mono);font-size:10px;color:var(--faint);border:1px solid var(--line2);border-radius:5px;padding:2px 6px}
+.top-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+.action-bell{
+  position:relative;width:38px;height:38px;border-radius:10px;background:var(--surface3);
+  border:1px solid var(--line);display:grid;place-items:center;color:var(--muted);transition:.15s;
+}
+.action-bell:hover{background:var(--surface);box-shadow:var(--shadow-sm)}
+.action-bell .badge{
+  position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;
+  background:var(--red);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 4px;
+  box-shadow:0 0 0 2px var(--surface);
+}
+.role-zone{display:flex;align-items:center;gap:9px}
+.role-zone label{font-size:10px;color:var(--faint);font-family:var(--mono);letter-spacing:.1em}
+.role-select{position:relative}
+.role-select select{
+  appearance:none;border:1px solid var(--line2);background:var(--surface);border-radius:10px;
+  padding:8px 30px 8px 12px;color:var(--ink2);outline:none;font-weight:500;font-size:12.5px;cursor:pointer;transition:.15s;
+}
+.role-select select:focus{border-color:var(--violet)}
+.role-select::after{content:"▾";position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--faint);pointer-events:none;font-size:11px}
+.clearance{font-family:var(--mono);font-size:10px;font-weight:600;padding:6px 11px;border-radius:999px;white-space:nowrap}
+.clearance.clr-hidden{background:var(--surface3);color:var(--faint)}
+.clearance.clr-masked{background:var(--amber-soft);color:var(--amber)}
+.clearance.clr-summary{background:var(--violet-soft);color:var(--violet)}
+.clearance.clr-clear{background:var(--teal-soft);color:var(--teal)}
+
+/* ============ Layout ============ */
+.main{display:grid;grid-template-columns:76px 312px 1fr;min-height:0}
+@media(max-width:1240px){.main{grid-template-columns:72px 270px 1fr}}
+.rail{
+  padding:14px 11px;border-right:1px solid var(--line);
+  background:rgba(255,255,255,.5);display:flex;flex-direction:column;gap:7px;
+}
+.nav-btn{
+  height:56px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  color:var(--faint);transition:.16s;border:1px solid transparent;position:relative;
+}
+.nav-btn svg{width:20px;height:20px}
+.nav-btn span{font-size:10.5px;font-weight:500}
+.nav-btn:hover{background:var(--surface);color:var(--muted);box-shadow:var(--shadow-sm)}
+.nav-btn.active{background:var(--ink);color:#fff;box-shadow:0 8px 22px rgba(13,17,23,.22)}
+.nav-btn.active svg{filter:drop-shadow(0 0 6px rgba(124,92,240,.6))}
+.nav-btn .nav-count{
+  position:absolute;top:7px;right:11px;min-width:16px;height:16px;border-radius:8px;background:var(--grad);
+  color:#fff;font-size:9px;font-weight:700;display:grid;place-items:center;padding:0 3px;
+}
+.rail-sep{height:1px;background:var(--line);margin:4px 8px}
+
+.left{border-right:1px solid var(--line);background:rgba(255,255,255,.62);overflow:auto;backdrop-filter:blur(8px)}
+.left-head{padding:18px 18px 13px;position:sticky;top:0;background:rgba(249,250,251,.92);backdrop-filter:blur(14px);z-index:5;border-bottom:1px solid var(--line)}
+.left-head h3{font-family:var(--display);font-size:17px;font-weight:600;letter-spacing:-.02em}
+.left-head p{font-size:11px;color:var(--faint);margin-top:3px;font-family:var(--mono)}
+.left-body{padding:14px}
+
+.stage{overflow:auto;min-width:0;position:relative}
+.stage-inner{max-width:1180px;margin:0 auto;padding:26px 34px 90px}
+.view{display:none}
+.view.active{display:block;animation:fade .3s cubic-bezier(.2,.7,.2,1)}
+@keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ============ Page header ============ */
+.page-title{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:22px}
+.page-title .pt-eyebrow{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--violet);display:flex;align-items:center;gap:9px;margin-bottom:11px}
+.page-title .pt-eyebrow::before{content:"";width:22px;height:2px;border-radius:2px;background:var(--grad)}
+.page-title h1{font-family:var(--display);font-size:30px;letter-spacing:-.035em;line-height:1.08;font-weight:700}
+.page-title p{color:var(--muted);margin-top:9px;font-size:13.5px;max-width:760px;line-height:1.6}
+.section{margin-top:26px}
+.section-h{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:13px;display:flex;align-items:center;gap:11px}
+.section-h::after{content:"";flex:1;height:1px;background:var(--line)}
+.section-h .sh-tag{font-family:var(--sans);text-transform:none;letter-spacing:0;font-size:11px;color:var(--faint);background:var(--surface3);padding:2px 8px;border-radius:6px}
+
+/* ============ Cards / common ============ */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow-sm)}
+.card.pad{padding:20px}
+.card.glow{box-shadow:var(--shadow)}
+.grid{display:grid;gap:14px}
+.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.grid.four{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:1240px){.grid.four{grid-template-columns:repeat(2,1fr)}.grid.three{grid-template-columns:1fr}}
+
+.tag{display:inline-flex;align-items:center;gap:6px;padding:4px 9px;border-radius:999px;background:var(--surface3);border:1px solid var(--line);color:var(--muted);font-size:11.5px;font-weight:500}
+.tag .d{width:6px;height:6px;border-radius:50%;background:currentColor}
+.tag.blue{background:var(--blue-soft);border-color:transparent;color:var(--blue)}
+.tag.violet{background:var(--violet-soft);border-color:transparent;color:var(--violet)}
+.tag.teal{background:var(--teal-soft);border-color:transparent;color:var(--teal)}
+.tag.amber{background:var(--amber-soft);border-color:transparent;color:var(--amber)}
+.tag.red{background:var(--red-soft);border-color:transparent;color:var(--red)}
+.tag.green{background:var(--green-soft);border-color:transparent;color:var(--green)}
+.tag.pink{background:var(--pink-soft);border-color:transparent;color:var(--pink)}
+.tag.ink{background:var(--ink);border-color:transparent;color:#fff}
+.tag-row{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+
+.tier{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:7px;font-family:var(--mono);font-size:10px;font-weight:600}
+.tier .d{width:6px;height:6px;border-radius:50%}
+.tier.official{background:var(--teal-soft);color:var(--official)} .tier.official .d{background:var(--official)}
+.tier.analyst{background:var(--amber-soft);color:var(--analyst)} .tier.analyst .d{background:var(--analyst)}
+.tier.rumor{background:var(--red-soft);color:var(--rumor)} .tier.rumor .d{background:var(--rumor)}
+
+.btn{
+  display:inline-flex;align-items:center;gap:7px;border-radius:10px;padding:9px 15px;font-weight:600;font-size:13px;
+  background:var(--ink);color:#fff;transition:.16s;box-shadow:var(--shadow-sm);
+}
+.btn:hover{transform:translateY(-1px);box-shadow:var(--shadow)}
+.btn:active{transform:translateY(0)}
+.btn.grad{background:var(--grad);box-shadow:0 8px 22px rgba(124,92,240,.28)}
+.btn.secondary{background:var(--surface);color:var(--ink2);border:1px solid var(--line2);box-shadow:none}
+.btn.secondary:hover{border-color:var(--violet);color:var(--violet)}
+.btn.ghost{background:transparent;color:var(--violet);box-shadow:none;border:1px solid transparent}
+.btn.ghost:hover{background:var(--violet-soft)}
+.btn.sm{padding:6px 11px;font-size:12px;border-radius:8px}
+.btn.red{background:var(--red)}
+.btn.teal{background:var(--teal)}
+.btn:disabled{opacity:.42;cursor:not-allowed;transform:none!important;box-shadow:none}
+
+.kpi{padding:17px 18px;border-radius:var(--r);border:1px solid var(--line);background:var(--surface);position:relative;overflow:hidden}
+.kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grad);opacity:.8}
+.kpi .val{font-family:var(--display);font-size:26px;font-weight:700;letter-spacing:-.04em;color:var(--ink);line-height:1}
+.kpi .val small{font-size:14px;color:var(--muted);font-weight:600}
+.kpi .label{font-size:11.5px;color:var(--muted);margin-top:7px}
+.kpi .trend{font-family:var(--mono);font-size:10px;margin-top:5px}
+.kpi .trend.up{color:var(--green)} .kpi .trend.down{color:var(--red)}
+
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px 11px;border-bottom:1px solid var(--line);font-size:12.5px;text-align:left;vertical-align:middle}
+th{font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.06em;font-family:var(--mono);font-weight:600}
+td{color:var(--ink2)}
+tbody tr{transition:.12s}
+tbody tr:hover{background:var(--surface2)}
+.masked{color:var(--red);background:var(--red-soft);border:1px dashed rgba(225,90,109,.4);padding:2px 8px;border-radius:7px;font-family:var(--mono);font-size:11px}
+.val-mono{font-family:var(--mono);font-size:12px}
+.conf-bar{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px}
+.conf-bar .track{width:42px;height:5px;border-radius:3px;background:var(--surface3);overflow:hidden}
+.conf-bar .fill{height:100%;border-radius:3px;background:var(--grad)}
+
+/* ============ Source / file cards ============ */
+.upload-zone{
+  border:1.5px dashed var(--line2);border-radius:var(--r);background:var(--surface);
+  padding:20px 16px;text-align:center;cursor:pointer;margin-bottom:14px;transition:.18s;position:relative;overflow:hidden;
+}
+.upload-zone::after{content:"";position:absolute;inset:0;background:var(--grad-soft);opacity:0;transition:.2s}
+.upload-zone:hover{border-color:var(--violet)}
+.upload-zone:hover::after{opacity:1}
+.upload-zone.drag{border-color:var(--violet);border-style:solid}
+.upload-zone.drag::after{opacity:1}
+.upload-zone>*{position:relative}
+.upload-zone .uz-ic{width:42px;height:42px;border-radius:12px;background:var(--grad);display:grid;place-items:center;margin:0 auto 10px;box-shadow:0 6px 18px rgba(124,92,240,.28)}
+.upload-zone .uz-ic svg{width:21px;height:21px}
+.upload-zone b{font-size:13px;font-weight:600}
+.upload-zone p{font-size:11px;color:var(--faint);font-family:var(--mono);margin-top:4px}
+.fmt-row{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-top:9px}
+.fmt{font-family:var(--mono);font-size:8.5px;font-weight:600;padding:2px 6px;border-radius:5px;background:var(--surface3);color:var(--muted)}
+
+.file-card{padding:13px;border-radius:12px;border:1px solid var(--line);background:var(--surface);margin-bottom:10px;cursor:pointer;transition:.16s;position:relative}
+.file-card:hover{box-shadow:var(--shadow);transform:translateY(-1px);border-color:var(--line2)}
+.file-card.active{border-color:var(--violet);box-shadow:var(--shadow-glow)}
+.file-card.active::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:3px;background:var(--grad)}
+.file-top{display:flex;align-items:flex-start;gap:10px}
+.file-icon{width:32px;height:32px;border-radius:9px;background:var(--blue-soft);color:var(--blue);display:grid;place-items:center;flex:none}
+.file-icon svg{width:17px;height:17px}
+.file-icon.ctrl{background:var(--red-soft);color:var(--red)}
+.file-name{font-weight:600;font-size:12.5px;line-height:1.35;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.file-meta{margin-top:9px;display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.mini{font-family:var(--mono);font-size:9.5px;padding:2px 6px;border-radius:6px;background:var(--surface3);color:var(--faint)}
+.file-lock{position:absolute;top:11px;right:11px;color:var(--red);font-size:12px}
+
+/* dynamic parse pipeline */
+.proc-card{padding:13px;border-radius:12px;border:1px solid var(--line2);background:var(--surface);margin-bottom:10px;box-shadow:var(--shadow-sm)}
+.pc-top{display:flex;align-items:center;gap:8px;margin-bottom:11px}
+.pc-ft{font-family:var(--mono);font-size:9px;font-weight:600;padding:3px 6px;border-radius:6px;background:var(--ink);color:#fff}
+.pc-name{font-size:12px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pc-state{font-family:var(--mono);font-size:9.5px;font-weight:600}
+.pc-state.parsing{color:var(--blue)} .pc-state.ready{color:var(--teal)} .pc-state.built{color:var(--violet)}
+.stages{display:flex;align-items:flex-start;margin:6px 0 2px}
+.stg{flex:1;text-align:center;position:relative}
+.stg:not(:last-child)::after{content:"";position:absolute;top:10px;left:50%;right:-50%;height:2px;background:var(--line2);z-index:1;transition:.4s}
+.stg.done:not(:last-child)::after{background:var(--grad)}
+.stg .ring{width:21px;height:21px;border-radius:50%;border:2px solid var(--line2);background:var(--surface);margin:0 auto 5px;display:grid;place-items:center;font-size:9px;font-weight:700;color:var(--faint);position:relative;z-index:2;transition:.3s}
+.stg.done .ring{border-color:transparent;background:var(--grad);color:#fff}
+.stg.active .ring{border-color:var(--violet);color:var(--violet);animation:pulse 1.1s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(124,92,240,.3)}70%{box-shadow:0 0 0 7px rgba(124,92,240,0)}100%{box-shadow:0 0 0 0 rgba(124,92,240,0)}}
+.stg .lbl{font-family:var(--mono);font-size:7.5px;color:var(--faint);line-height:1.25}
+.stg.done .lbl,.stg.active .lbl{color:var(--muted)}
+.build-wiki{width:100%;margin-top:11px;display:none}
+.build-wiki.show{display:flex;justify-content:center;animation:fade .3s}
+
+/* ============ Wiki / Object view ============ */
+.obj-hero{display:flex;align-items:flex-start;gap:16px;margin-bottom:4px}
+.obj-badge{width:52px;height:52px;border-radius:14px;flex:none;display:grid;place-items:center;font-family:var(--display);font-size:22px;font-weight:700;color:#fff;box-shadow:var(--shadow)}
+.iface-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);font-family:var(--mono);font-size:10.5px;color:var(--muted);font-weight:500}
+.iface-chip.ctrl{border-color:rgba(225,90,109,.4);background:var(--red-soft);color:var(--red)}
+.lead-def{font-family:var(--display);font-size:16px;line-height:1.7;color:var(--ink2);font-weight:500}
+
+/* as-of temporal slider */
+.temporal{background:linear-gradient(180deg,var(--surface),var(--surface2));border:1px solid var(--line2);border-radius:var(--r);padding:16px 18px;margin-top:14px}
+.temporal-head{display:flex;align-items:center;gap:11px;margin-bottom:14px;flex-wrap:wrap}
+.temporal-head b{font-family:var(--display);font-size:13.5px;font-weight:600}
+.mode-toggle{display:inline-flex;background:var(--surface3);border-radius:9px;padding:3px;gap:2px}
+.mode-toggle button{padding:5px 12px;border-radius:7px;font-size:11.5px;font-weight:600;color:var(--muted);transition:.15s}
+.mode-toggle button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm)}
+.mode-toggle button.on.asof{color:var(--violet)}
+.slider-wrap{display:flex;align-items:center;gap:14px}
+.slider-wrap input[type=range]{flex:1;-webkit-appearance:none;height:5px;border-radius:3px;background:linear-gradient(90deg,var(--g1),var(--g2));outline:none}
+.slider-wrap input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--violet);cursor:pointer;box-shadow:var(--shadow)}
+.slider-wrap input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--violet);cursor:pointer}
+.asof-readout{font-family:var(--mono);font-size:12px;font-weight:600;min-width:96px;text-align:center;padding:6px 10px;border-radius:8px;background:var(--violet-soft);color:var(--violet)}
+.asof-note{margin-top:11px;font-size:11.5px;color:var(--amber);background:var(--amber-soft);border-radius:9px;padding:8px 11px;display:flex;gap:8px;align-items:flex-start;line-height:1.5}
+.asof-note.hide{display:none}
+
+.links-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.link-card{border:1px solid var(--line);border-radius:11px;padding:11px 13px;background:var(--surface);cursor:pointer;transition:.16s}
+.link-card:hover{border-color:var(--violet);box-shadow:var(--shadow);transform:translateY(-1px)}
+.link-card .lt{font-family:var(--mono);font-size:10px;color:var(--violet);font-weight:600}
+.link-card .lt .card-rel{color:var(--faint);font-weight:400}
+.link-card .tg{font-size:13px;font-weight:600;margin-top:4px;display:flex;align-items:center;gap:7px}
+.link-card .tg .arrow{color:var(--ghost)}
+.link-card .lc-meta{font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-top:4px}
+
+.timeline{border-left:2px solid var(--line2);margin-left:7px;padding-left:18px}
+.tl{position:relative;margin-bottom:15px}
+.tl::before{content:"";position:absolute;left:-25px;top:3px;width:11px;height:11px;border-radius:50%;background:var(--surface);border:2.5px solid var(--violet)}
+.tl time{font-family:var(--mono);font-size:11px;color:var(--violet);font-weight:600}
+.tl p{font-size:12.5px;color:var(--ink2);margin-top:3px}
+.tl .tl-who{font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-top:2px}
+
+.action-deck{display:flex;gap:9px;flex-wrap:wrap;margin-top:6px}
+.act-btn{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line2);border-radius:10px;padding:9px 13px;background:var(--surface);color:var(--ink2);font-size:12.5px;font-weight:600;transition:.15s}
+.act-btn:hover{border-color:var(--violet);background:var(--violet-soft);color:var(--violet)}
+.act-btn.ctrl{border-color:rgba(225,90,109,.4);color:var(--red)}
+.act-btn.ctrl:hover{background:var(--red-soft);border-color:var(--red)}
+.act-btn.disabled{opacity:.4;cursor:not-allowed}
+.act-btn.disabled:hover{border-color:var(--line2);background:var(--surface);color:var(--ink2)}
+.act-btn .lk{font-size:11px}
+
+.deny-card{border:1px dashed rgba(225,90,109,.45);background:var(--red-soft);border-radius:var(--r);padding:20px;display:flex;gap:15px;align-items:flex-start}
+.deny-card .di{width:40px;height:40px;border-radius:11px;background:rgba(225,90,109,.15);color:var(--red);display:grid;place-items:center;flex:none;font-size:18px}
+.deny-card b{color:var(--red);font-size:14px}
+.deny-card p{color:var(--muted);font-size:12.5px;margin-top:4px;line-height:1.6}
+
+/* ============ Ontology graph ============ */
+.onto-toolbar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px}
+.filters{display:flex;gap:7px;flex-wrap:wrap}
+.fchip{font-family:var(--mono);font-size:10.5px;font-weight:500;padding:5px 11px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);color:var(--muted);cursor:pointer;transition:.15s;display:flex;align-items:center;gap:6px;user-select:none}
+.fchip:hover{border-color:var(--violet);color:var(--ink2)}
+.fchip.on{background:var(--ink);color:#fff;border-color:transparent}
+.fchip .d{width:8px;height:8px;border-radius:3px}
+.fchip.ctrl-chip.on{background:var(--red);color:#fff}
+
+.ontology-wrap{height:660px;position:relative;overflow:hidden;border-radius:var(--r-lg);border:1px solid var(--graph-line);
+  background:
+    radial-gradient(circle at 50% 42%,rgba(124,92,240,.10),transparent 52%),
+    radial-gradient(circle at 80% 80%,rgba(69,135,246,.07),transparent 50%),
+    linear-gradient(rgba(124,150,200,.045) 1px,transparent 1px) 0 0/36px 36px,
+    linear-gradient(90deg,rgba(124,150,200,.045) 1px,transparent 1px) 0 0/36px 36px,
+    var(--graph);
+  box-shadow:0 30px 80px rgba(8,12,20,.35),inset 0 0 0 1px rgba(255,255,255,.02);
+}
+#ontoSvg{width:100%;height:100%;display:block;cursor:grab}
+#ontoSvg:active{cursor:grabbing}
+.node-label{font-family:var(--sans);font-size:11px;font-weight:700;fill:#eef3fa}
+.node-type{font-family:var(--mono);font-size:8.5px;fill:#8896aa}
+.edge-label{font-family:var(--mono);font-size:8.5px;fill:#6f7e93}
+
+.onto-panel{position:absolute;right:16px;top:16px;width:230px;background:rgba(17,21,31,.92);border:1px solid var(--graph-line);border-radius:var(--r);padding:15px;color:var(--graph-ink);backdrop-filter:blur(14px);box-shadow:0 18px 44px rgba(0,0,0,.4)}
+.onto-panel h4{font-family:var(--display);font-size:13px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.onto-panel .layer{display:flex;gap:9px;align-items:flex-start;margin-bottom:9px;font-size:11px;line-height:1.4}
+.onto-panel .layer .ld{width:8px;height:8px;border-radius:2px;margin-top:4px;flex:none}
+.onto-panel .layer b{color:#dfe6f0;font-weight:600}
+.onto-panel .layer span{color:#93a1b5}
+
+.onto-detail{position:absolute;left:16px;bottom:16px;width:300px;background:rgba(17,21,31,.95);border:1px solid var(--graph-line);border-radius:var(--r);color:var(--graph-ink);backdrop-filter:blur(14px);box-shadow:0 20px 50px rgba(0,0,0,.45);overflow:hidden;opacity:0;transform:translateY(12px);pointer-events:none;transition:.24s}
+.onto-detail.show{opacity:1;transform:none;pointer-events:auto}
+.od-head{padding:14px 15px;border-bottom:1px solid var(--graph-line);position:relative}
+.od-type{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#8896aa}
+.od-name{font-family:var(--display);font-size:17px;font-weight:600;margin-top:3px}
+.od-x{position:absolute;right:12px;top:11px;color:#8896aa;cursor:pointer;font-size:17px;line-height:1}
+.od-x:hover{color:#fff}
+.od-body{padding:12px 15px;max-height:230px;overflow-y:auto}
+.od-lbl{font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;text-transform:uppercase;color:#7f8da1;margin:10px 0 5px}
+.od-lbl:first-child{margin-top:0}
+.od-ifaces{display:flex;flex-wrap:wrap;gap:5px}
+.od-iface{font-family:var(--mono);font-size:9.5px;padding:2px 7px;border-radius:6px;background:rgba(124,92,240,.18);color:#c3b5f7}
+.od-iface.ctrl{background:rgba(225,90,109,.18);color:#f0a8b3}
+.od-prop{display:flex;justify-content:space-between;gap:8px;font-family:var(--mono);font-size:10.5px;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.od-prop .k{color:#93a1b5} .od-prop .v{color:#dfe6f0;text-align:right} .od-prop .v.masked{color:#f0a8b3;background:none;border:none;padding:0}
+.od-link{font-family:var(--mono);font-size:10px;color:#93a1b5;padding:3px 0}
+.od-link b{color:#9db8f0;font-weight:600}
+.od-open{display:block;text-align:center;padding:10px;font-size:11.5px;font-weight:600;background:rgba(124,92,240,.2);color:#c3b5f7;cursor:pointer;border-top:1px solid var(--graph-line)}
+.od-open:hover{background:rgba(124,92,240,.32)}
+
+/* ============ Charts ============ */
+.chart-card{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:18px;margin:14px 0;box-shadow:var(--shadow-sm)}
+.chart-title{font-family:var(--display);font-weight:600;font-size:14px;display:flex;align-items:center;gap:9px}
+.chart-sub{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin:3px 0 14px}
+.chart-card svg{width:100%;height:auto;overflow:visible}
+.ch-legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:11px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.ch-legend span{display:flex;align-items:center;gap:6px}
+.ch-legend i{width:11px;height:11px;border-radius:3px}
+.axis{font-family:var(--mono);font-size:9.5px;fill:var(--faint)}
+.bar-label{font-family:var(--mono);font-size:10px;fill:var(--ink2);font-weight:600}
+.grid-line{stroke:var(--line);stroke-width:1}
+.grid-line.zero{stroke:var(--line2)}
+
+/* ============ Workshop ============ */
+.ws-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.ws-tab{padding:9px 15px;border-radius:11px;border:1px solid var(--line2);background:var(--surface);font-size:12.5px;font-weight:600;color:var(--muted);transition:.15s;display:flex;align-items:center;gap:8px}
+.ws-tab:hover{border-color:var(--violet);color:var(--ink2)}
+.ws-tab.on{background:var(--ink);color:#fff;border-color:transparent;box-shadow:var(--shadow)}
+.ws-tab .wt-ic{font-size:14px}
+
+.hhi-gauge{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+.gauge-svg{flex:none}
+.hhi-detail{flex:1;min-width:200px}
+.hhi-detail .hd-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.hhi-detail .hd-row .k{color:var(--muted)}
+.hhi-detail .hd-row .v{font-family:var(--mono);font-weight:600}
+.risk-badge{padding:4px 11px;border-radius:999px;font-size:11px;font-weight:700;font-family:var(--mono)}
+.risk-critical{background:var(--red);color:#fff} .risk-high{background:var(--red-soft);color:var(--red)}
+.risk-moderate{background:var(--amber-soft);color:var(--amber)} .risk-low{background:var(--green-soft);color:var(--green)}
+
+.supplier-bar{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.supplier-bar:last-child{border-bottom:none}
+.sb-name{width:120px;font-size:12px;font-weight:500;flex:none}
+.sb-name .lk{color:var(--red);font-size:10px;margin-left:4px}
+.sb-track{flex:1;height:22px;border-radius:7px;background:var(--surface3);overflow:hidden;position:relative}
+.sb-fill{height:100%;border-radius:7px;display:flex;align-items:center;padding-left:9px;color:#fff;font-family:var(--mono);font-size:10.5px;font-weight:600;transition:width .8s cubic-bezier(.2,.7,.2,1)}
+
+.queue-card{padding:15px;border-radius:var(--r);border:1px solid var(--line2);background:var(--surface);box-shadow:var(--shadow-sm);transition:.16s}
+.queue-card:hover{box-shadow:var(--shadow)}
+.qc-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.qc-title{font-family:var(--display);font-size:15px;font-weight:600;margin:10px 0 5px}
+.qc-desc{color:var(--muted);font-size:12.5px;line-height:1.55}
+.qc-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+
+/* ============ Ask ============ */
+.ask-layout{display:grid;grid-template-columns:1fr 340px;gap:16px}
+@media(max-width:1240px){.ask-layout{grid-template-columns:1fr}}
+.chat-shell{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--shadow);min-height:600px;display:flex;flex-direction:column;overflow:hidden}
+.chat-head{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:linear-gradient(180deg,var(--surface),var(--surface2))}
+.chat-head b{font-family:var(--display);font-size:14px;font-weight:600;display:flex;align-items:center;gap:9px}
+.chat-head .ch-spark{width:24px;height:24px;border-radius:7px;background:var(--grad);display:grid;place-items:center}
+.chat-body{flex:1;padding:20px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.scope-note{font-family:var(--mono);font-size:10px;color:var(--muted);background:var(--surface3);border-radius:9px;padding:8px 11px;display:flex;align-items:center;gap:8px;line-height:1.5}
+.scope-note .d{width:7px;height:7px;border-radius:50%;background:var(--teal);flex:none}
+.msg{max-width:86%}
+.msg.user{align-self:flex-end}
+.msg.user .bubble{background:var(--ink);color:#fff;border-radius:14px 14px 4px 14px;padding:11px 14px;font-size:13px;line-height:1.6}
+.msg.ai{align-self:flex-start}
+.msg.ai .bubble{background:var(--surface2);border:1px solid var(--line);border-radius:14px 14px 14px 4px;padding:12px 14px;font-size:13px;line-height:1.65}
+.msg .who{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:5px}
+.cites{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.cite{font-family:var(--mono);font-size:9.5px;padding:3px 8px;border-radius:7px;background:var(--teal-soft);color:var(--teal);cursor:pointer;border:1px solid transparent;transition:.12s;font-weight:600}
+.cite:hover{border-color:var(--teal)}
+.filtered{font-family:var(--mono);font-size:9.5px;color:var(--red);margin-top:8px;display:flex;align-items:center;gap:6px;background:var(--red-soft);padding:6px 9px;border-radius:8px}
+.chat-input{padding:14px 16px;border-top:1px solid var(--line);display:flex;gap:9px;background:var(--surface)}
+.chat-input input{flex:1;border:1px solid var(--line2);border-radius:11px;padding:11px 14px;outline:none;background:var(--surface2);font-size:13px}
+.chat-input input:focus{border-color:var(--violet);background:var(--surface)}
+.side-tool{display:flex;flex-direction:column;gap:14px}
+.suggest{display:flex;flex-direction:column;gap:7px}
+.sg-btn{text-align:left;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);font-size:12px;color:var(--ink2);transition:.15s;display:flex;align-items:center;gap:9px}
+.sg-btn:hover{border-color:var(--violet);background:var(--violet-soft);color:var(--violet)}
+.sg-btn .sg-ic{font-size:13px}
+.memory-form textarea{width:100%;min-height:78px;resize:vertical;border:1px solid var(--line2);border-radius:11px;padding:11px;background:var(--surface2);outline:none;color:var(--ink);font-size:12.5px}
+.memory-form textarea:focus{border-color:var(--violet);background:var(--surface)}
+.memory-form select{width:100%;border:1px solid var(--line2);border-radius:10px;padding:9px;margin:8px 0;background:var(--surface2);outline:none;font-size:12.5px}
+
+/* ============ Generate / Studio ============ */
+.model-bar{display:flex;align-items:center;gap:11px;flex-wrap:wrap;border:1px solid var(--line);border-radius:var(--r);padding:13px 16px;background:var(--surface);margin-bottom:16px}
+.model-bar .mb-lbl{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.model-pick{display:flex;gap:7px;flex-wrap:wrap}
+.mp{font-family:var(--mono);font-size:11px;font-weight:500;padding:7px 12px;border-radius:9px;border:1px solid var(--line2);background:var(--surface);color:var(--muted);cursor:pointer;transition:.15s;display:flex;align-items:center;gap:7px}
+.mp:hover{border-color:var(--violet);color:var(--ink2)}
+.mp.on{background:var(--ink);color:#fff;border-color:transparent}
+.mp .d{width:6px;height:6px;border-radius:50%;background:var(--teal)}
+.mp .loc{font-size:8.5px;opacity:.7;background:rgba(255,255,255,.15);padding:1px 5px;border-radius:4px}
+.mp:not(.on) .loc{background:var(--surface3)}
+
+.gen-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(178px,1fr));gap:13px}
+.gen-card{border:1px solid var(--line);border-radius:var(--r);padding:18px 16px;background:var(--surface);cursor:pointer;transition:.18s;position:relative;overflow:hidden}
+.gen-card::after{content:"";position:absolute;right:-30px;top:-30px;width:80px;height:80px;border-radius:50%;background:var(--grad-soft);opacity:0;transition:.25s}
+.gen-card:hover{border-color:var(--violet);transform:translateY(-2px);box-shadow:var(--shadow)}
+.gen-card:hover::after{opacity:1}
+.gen-card .gc-ic{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;margin-bottom:11px;font-size:18px;position:relative}
+.gen-card .gc-t{font-family:var(--display);font-size:15px;font-weight:600;position:relative}
+.gen-card .gc-d{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.5;position:relative}
+.gen-card .gc-out{font-family:var(--mono);font-size:8.5px;color:var(--faint);margin-top:10px;position:relative}
+
+.scope-box,.chart-choices{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}
+@media(max-width:1240px){.scope-box,.chart-choices{grid-template-columns:repeat(2,1fr)}}
+.scope-tile{padding:13px 14px;border:1px solid var(--line2);border-radius:12px;background:var(--surface);cursor:pointer;transition:.15s}
+.scope-tile:hover{border-color:var(--violet)}
+.scope-tile.on{border-color:var(--violet);background:var(--violet-soft);box-shadow:var(--shadow-glow)}
+.scope-tile b{font-size:13px;font-weight:600}
+.scope-tile p{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.45}
+
+.gen-output{border:1px solid var(--line2);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow);overflow:hidden;margin-top:18px}
+.go-head{display:flex;align-items:center;gap:12px;padding:15px 18px;border-bottom:1px solid var(--line);background:linear-gradient(180deg,var(--surface),var(--surface2))}
+.go-t{font-family:var(--display);font-size:16px;font-weight:600;flex:1}
+.go-meta{font-family:var(--mono);font-size:9.5px;color:var(--faint)}
+.go-export{display:flex;gap:7px}
+.exp-btn{font-family:var(--mono);font-size:11px;font-weight:600;padding:6px 12px;border-radius:8px;border:1px solid var(--line2);background:var(--surface);color:var(--muted);transition:.15s;display:flex;align-items:center;gap:6px}
+.exp-btn:hover{border-color:var(--violet);color:var(--violet)}
+.exp-btn.pdf:hover{border-color:var(--red);color:var(--red)}
+.exp-btn.ppt:hover{border-color:var(--amber);color:var(--amber)}
+.go-body{padding:22px 26px;max-height:600px;overflow-y:auto}
+.go-body h3{font-family:var(--display);font-size:21px;font-weight:700;letter-spacing:-.02em}
+.go-body .rpt-sub{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin:5px 0 18px;padding-bottom:13px;border-bottom:1px solid var(--line)}
+.go-body h4{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--violet);margin:22px 0 10px;display:flex;align-items:center;gap:9px}
+.go-body h4::before{content:"";width:16px;height:2px;border-radius:2px;background:var(--grad)}
+.go-body p{font-size:13px;line-height:1.75;color:var(--ink2);margin-bottom:10px}
+.gen-loading{text-align:center;padding:46px 20px}
+.gl-spin{width:34px;height:34px;border:3px solid var(--line2);border-top-color:var(--violet);border-radius:50%;margin:0 auto 16px;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.gl-txt{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.gl-step{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:7px}
+
+/* ============ Action Modal ============ */
+.modal-overlay{position:fixed;inset:0;background:rgba(13,17,23,.5);backdrop-filter:blur(4px);z-index:80;display:none;align-items:center;justify-content:center;padding:20px;animation:fade .2s}
+.modal-overlay.show{display:flex}
+.modal{background:var(--surface);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);max-width:560px;width:100%;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;animation:modalin .3s cubic-bezier(.2,.7,.2,1)}
+@keyframes modalin{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:none}}
+.modal-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:13px}
+.modal-head .mh-ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;flex:none;font-size:17px}
+.modal-head .mh-ic.normal{background:var(--violet-soft);color:var(--violet)}
+.modal-head .mh-ic.ctrl{background:var(--red-soft);color:var(--red)}
+.modal-head h3{font-family:var(--display);font-size:17px;font-weight:600}
+.modal-head .mh-sub{font-family:var(--mono);font-size:10.5px;color:var(--faint);margin-top:3px}
+.modal-head .mh-x{margin-left:auto;color:var(--faint);font-size:20px;cursor:pointer;line-height:1}
+.modal-head .mh-x:hover{color:var(--ink)}
+.modal-body{padding:18px 20px;overflow-y:auto}
+.act-spec{margin-bottom:16px}
+.act-spec .as-label{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:7px;display:flex;align-items:center;gap:7px}
+.act-spec .as-label .as-num{width:17px;height:17px;border-radius:5px;background:var(--grad);color:#fff;display:grid;place-items:center;font-size:9px;font-weight:700}
+.field-row{display:flex;flex-direction:column;gap:5px;margin-bottom:11px}
+.field-row label{font-size:11.5px;font-weight:600;color:var(--ink2)}
+.field-row input,.field-row select,.field-row textarea{border:1px solid var(--line2);border-radius:9px;padding:9px 11px;background:var(--surface2);outline:none;font-size:12.5px;color:var(--ink)}
+.field-row input:focus,.field-row select:focus,.field-row textarea:focus{border-color:var(--violet);background:var(--surface)}
+.check-list{display:flex;flex-direction:column;gap:6px}
+.check-item{display:flex;align-items:center;gap:9px;font-size:12px;color:var(--ink2);padding:7px 11px;border-radius:9px;background:var(--surface2)}
+.check-item .ck{width:18px;height:18px;border-radius:6px;background:var(--green-soft);color:var(--green);display:grid;place-items:center;font-size:11px;flex:none}
+.check-item .ck.warn{background:var(--amber-soft);color:var(--amber)}
+.sandbox-note{display:flex;gap:10px;background:var(--amber-soft);border-radius:11px;padding:12px 14px;font-size:12px;color:var(--amber);line-height:1.55;align-items:flex-start}
+.sandbox-note.hide{display:none}
+.effect-list{display:flex;flex-direction:column;gap:6px}
+.effect-item{display:flex;gap:9px;font-size:12px;color:var(--ink2);align-items:flex-start}
+.effect-item .ei{color:var(--violet);flex:none;margin-top:2px}
+.modal-foot{padding:15px 20px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:flex-end;background:var(--surface2)}
+
+/* ============ Action drawer (notifications) ============ */
+.drawer{position:fixed;top:0;right:0;bottom:0;width:380px;background:var(--surface);box-shadow:var(--shadow-lg);z-index:70;transform:translateX(100%);transition:.3s cubic-bezier(.2,.7,.2,1);display:flex;flex-direction:column}
+.drawer.show{transform:none}
+.drawer-head{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.drawer-head h3{font-family:var(--display);font-size:16px;font-weight:600}
+.drawer-head .dh-x{color:var(--faint);font-size:20px;cursor:pointer}
+.drawer-body{flex:1;overflow-y:auto;padding:14px}
+.drawer-item{padding:13px;border-radius:12px;border:1px solid var(--line);margin-bottom:10px;transition:.15s}
+.drawer-item:hover{box-shadow:var(--shadow-sm)}
+.di-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.di-type{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--violet)}
+.di-target{font-size:13px;font-weight:600;margin-top:7px}
+.di-desc{font-size:11.5px;color:var(--muted);margin-top:4px;line-height:1.5}
+
+/* ============ Toast ============ */
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(24px);background:var(--ink);color:#fff;border-radius:13px;padding:13px 18px;box-shadow:var(--shadow-lg);opacity:0;transition:.28s cubic-bezier(.2,.7,.2,1);z-index:100;font-size:13px;display:flex;align-items:center;gap:11px;max-width:520px}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.toast .ti{width:22px;height:22px;border-radius:7px;background:var(--grad);display:grid;place-items:center;flex:none;font-size:12px}
+.toast b{font-weight:700}
+.toast .ti.ctrl{background:var(--red)}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- ============ TOPBAR ============ -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none"><rect x="5" y="5" width="14" height="14" rx="3" stroke="#fff" stroke-width="1.7"/><circle cx="12" cy="12" r="2.4" fill="#fff"/><path d="M12 5V2M12 22v-3M5 12H2M22 12h-3M7 7L5 5M17 7l2-2M7 17l-2 2M17 17l2 2" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </div>
+      <div class="brand-title">
+        <b>SemiKB</b>
+        <small>knowledge operating system</small>
+      </div>
+    </div>
+
+    <div class="kb-pill"><span class="dot"></span>半导体竞争情报库 · v3</div>
+
+    <div class="search">
+      <span class="ic"><svg width="16" height="16" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/><path d="M21 21l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></span>
+      <input id="searchInput" placeholder="搜索 Object / Wiki / 本体 / 来源…  例：N3 · EUV · 长鑫 · 供应集中度">
+      <span class="kbd">⌘K</span>
+    </div>
+
+    <div class="top-right">
+      <button class="action-bell" id="actionBell" title="待审 Action 队列">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none"><path d="M12 3a6 6 0 0 0-6 6c0 5-2 7-2 7h16s-2-2-2-7a6 6 0 0 0-6-6z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10 20a2 2 0 0 0 4 0" stroke="currentColor" stroke-width="1.7"/></svg>
+        <span class="badge" id="actionBadge">0</span>
+      </button>
+      <div class="role-zone">
+        <label>ACCESS</label>
+        <div class="role-select"><select id="roleSelect"></select></div>
+        <span class="clearance" id="clearance"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ============ MAIN ============ -->
+  <main class="main">
+    <nav class="rail" id="rail"></nav>
+    <aside class="left" id="left"></aside>
+    <section class="stage" id="stage">
+      <div class="stage-inner">
+        <div class="view active" id="view-sources"></div>
+        <div class="view" id="view-wiki"></div>
+        <div class="view" id="view-workshop"></div>
+        <div class="view" id="view-ask"></div>
+        <div class="view" id="view-generate"></div>
+      </div>
+      <!-- ontology occupies full stage -->
+      <div class="view" id="view-ontology" style="display:none"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ============ Action Modal ============ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modal"></div>
+</div>
+
+<!-- ============ Action Drawer ============ -->
+<div class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h3>待审 Action 队列</h3>
+    <span class="dh-x" id="drawerClose">×</span>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</div>
+
+<input type="file" id="fileInput" multiple accept=".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.md,.txt,.csv,.html" style="display:none">
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==========================================================================
+   SemiKB · 半导体知识操作系统  v3
+   MinerU × LLM-Wiki × Palantir Ontology
+   语义层(Semantic) + 动态层(Kinetic) + 动态安全(Dynamic Security) + 双时间轴
+   All data anonymized & illustrative. In-memory only (no storage APIs).
+========================================================================== */
+
+/* ---------- icons ---------- */
+const ICON = {
+  sources:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 3h8l4 4v14H6z" stroke="currentColor" stroke-width="1.7"/><path d="M14 3v4h4M9 13h6M9 17h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  wiki:'<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="14" height="18" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M8 8h6M8 12h6M8 16h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  onto:'<svg viewBox="0 0 24 24" fill="none"><circle cx="6" cy="7" r="2.6" stroke="currentColor" stroke-width="1.7"/><circle cx="18" cy="8" r="2.6" stroke="currentColor" stroke-width="1.7"/><circle cx="11" cy="18" r="2.6" stroke="currentColor" stroke-width="1.7"/><path d="M8.4 7.4l7 .8M7.6 9l2.6 7M16 10.4l-4 6" stroke="currentColor" stroke-width="1.5"/></svg>',
+  workshop:'<svg viewBox="0 0 24 24" fill="none"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="8" cy="6" r="2.2" fill="currentColor"/><circle cx="15" cy="12" r="2.2" fill="currentColor"/><circle cx="11" cy="18" r="2.2" fill="currentColor"/></svg>',
+  ask:'<svg viewBox="0 0 24 24" fill="none"><path d="M4 5h16v11H10l-4 4v-4H4z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="9" cy="10.5" r="1" fill="currentColor"/><circle cx="12" cy="10.5" r="1" fill="currentColor"/><circle cx="15" cy="10.5" r="1" fill="currentColor"/></svg>',
+  gen:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 3l2.3 5.2L20 9l-4.2 4 1 6L12 16.2 7.2 19l1-6L4 9l5.7-.8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>',
+  pdf:'<svg viewBox="0 0 24 24" fill="none"><path d="M6 3h8l4 4v14H6z" stroke="currentColor" stroke-width="1.6"/><path d="M14 3v4h4M8 15h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  upload:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 16V4M12 4L7 9M12 4l5 5" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>',
+};
+
+/* ---------- RBAC ---------- */
+const ROLES = {
+  viewer:    {label:'Viewer 只读',     mode:'hidden',  actions:[]},
+  analyst:   {label:'Analyst 分析',    mode:'masked',  actions:['review','correct','merge']},
+  strategy:  {label:'Strategy 战略',   mode:'summary', actions:['review','correct','merge','promote']},
+  compliance:{label:'Compliance 合规', mode:'clear',   actions:['review','correct','merge','promote','mark']},
+};
+let role='analyst';
+const accessMode=()=>ROLES[role].mode;
+const canSeeControlled=()=>accessMode()!=='hidden';
+const canAction=a=>ROLES[role].actions.includes(a);
+function fieldDisplay(val, controlled){
+  if(!controlled) return {text:val, masked:false};
+  const m=accessMode();
+  if(m==='clear')   return {text:val, masked:false};
+  if(m==='summary') return {text:'[受控摘要] '+String(val).slice(0,8)+'…', masked:true};
+  if(m==='masked')  return {text:'•••• 受控字段', masked:true};
+  return {text:'—', masked:true};
+}
+
+/* ---------- color by Object Type ---------- */
+const TYPE_COLOR={
+  Company:'#3b7ff5', FablessCompany:'#3b7ff5', Foundry:'#0fae9b', IDM:'#0fae9b',
+  Fab:'#5aa0ff', ProcessNode:'#7c5cf0', Equipment:'#e15a6d', Material:'#9d7bf0',
+  Product:'#23a06b', Industry:'#d98a1f', Market:'#d98a1f', SupplyChain:'#c95bd6',
+  Standard:'#8a93a3', Compliance:'#e15a6d', Event:'#d98a1f', UploadedAsset:'#7c5cf0', Insight:'#0fae9b'
+};
+const typeColor=t=>TYPE_COLOR[t]||'#7c5cf0';
+
+/* ==========================================================================
+   FUNCTIONS (real computation — from 方案 §7.3)
+========================================================================== */
+const TIER_WEIGHT={official:3, analyst:2, rumor:1};
+
+// Function 1: resolve_property_conflict
+function resolvePropertyConflict(observations){
+  const eligible=observations.filter(o=>o.sourceTier!=='rumor');
+  if(!eligible.length) return {status:'pending_review', reason:'仅有 rumor 来源'};
+  const winner=eligible.slice().sort((a,b)=>{
+    if(TIER_WEIGHT[b.sourceTier]!==TIER_WEIGHT[a.sourceTier]) return TIER_WEIGHT[b.sourceTier]-TIER_WEIGHT[a.sourceTier];
+    if(b.asOf!==a.asOf) return b.asOf>a.asOf?1:-1;
+    return b.confidence-a.confidence;
+  })[0];
+  return {status:'resolved', value:winner.value, source:winner};
+}
+
+// Function 3: supply_concentration — real HHI
+function supplyConcentration(suppliers){
+  // suppliers: [{name, share(0-1), controlled}]
+  const shares=suppliers.map(s=>s.share).filter(x=>x!=null);
+  if(!shares.length) return {status:'insufficient_data'};
+  const hhi=Math.round(shares.reduce((a,x)=>a+(x*100)**2,0));
+  const top1=Math.max(...shares);
+  const sorted=shares.slice().sort((a,b)=>b-a);
+  const top3=sorted.slice(0,3).reduce((a,b)=>a+b,0);
+  let risk = (hhi>2500 && top1>0.5) ? 'critical' : hhi>2500 ? 'high' : hhi>1500 ? 'moderate' : 'low';
+  return {hhi, top1, top3, risk, suppliers,
+    controlled:suppliers.filter(s=>s.controlled).map(s=>s.name)};
+}
+
+// recency weight for confidence aggregation
+function recencyWeight(yearsOld){ return Math.exp(-0.693*yearsOld/1.0); }
+
+/* ==========================================================================
+   DATA — Sources (NotebookLM-style, with sourceTier + controlled)
+========================================================================== */
+let files=[
+  {id:'s1', name:'foundry_Q4_earnings.pdf', title:'代工厂 A 季度财报 · 产能/capex/按节点营收',
+   source:'上市公司官方披露', date:'2024-Q4', type:'财报', size:'484 KB', tier:'official',
+   parsed:true, wikiBuilt:true, controlled:false, derived:'FoundryA',
+   abstract:'代工厂 A 季报：N3 进入量产、营收按制程拆分、Arizona Fab 产能爬坡指引、N2 进入风险试产。',
+   facts:['N3 营收占比约 26%，状态 HVM','N5 营收占比约 22%','Arizona Fab 产能爬坡指引','N2 进入 risk production']},
+  {id:'s2', name:'analyst_foundry_report.pdf', title:'第三方机构 · 份额与产能估计',
+   source:'分析机构', date:'2024-Q1', type:'分析报告', size:'312 KB', tier:'analyst',
+   parsed:true, wikiBuilt:true, controlled:false, derived:'N3',
+   abstract:'机构对各代工厂先进节点产能、良率与市场份额的估计；N3 良率爬坡数据为估计值。',
+   facts:['N3 风险试产 2021','N5 良率约 0.82(估计)','先进节点份额估计']},
+  {id:'s3', name:'channel_check_notes.docx', title:'供应链渠道访谈 · 传闻级',
+   source:'渠道调研', date:'2024-Q2', type:'访谈纪要', size:'48 KB', tier:'rumor',
+   parsed:true, wikiBuilt:false, controlled:false, derived:'N2',
+   abstract:'供应链渠道访谈，含 N2 量产时点传闻、设备交期等未证实信息，置信度低，强制进待审。',
+   facts:['N2 量产时点传闻','设备交期变化(未证实)']},
+  {id:'s4', name:'equipment_techbrief.pdf', title:'先进光刻设备规格 · 受出口管制',
+   source:'设备商技术文档', date:'2024', type:'技术白皮书', size:'1.2 MB', tier:'official',
+   parsed:true, wikiBuilt:true, controlled:true, derived:'EUV',
+   abstract:'EUV 光刻设备规格与制程适配；含受出口管制信息，受控文档使用本地 LLM 推理不出域。',
+   facts:['EUV 设备规格','受先进制程出口管制','供应单点依赖']},
+  {id:'s5', name:'semi_standard_hbm.pdf', title:'JEDEC HBM 存储标准',
+   source:'JEDEC 标准', date:'2024', type:'标准文件', size:'2.1 MB', tier:'official',
+   parsed:true, wikiBuilt:true, controlled:false, derived:'N5',
+   abstract:'高带宽存储 JEDEC 标准条款、版本与引用关系。',
+   facts:['HBM 标准条款','版本演进关系']},
+];
+let activeFile='s1';
+
+/* ==========================================================================
+   DATA — Wiki / Objects (Object instances = backing datasource)
+   props: [key, value, controlled, tier, confidence, asOf, srcId]
+   For bitemporal demo, some props have asOfValues map.
+========================================================================== */
+let wikiPages={
+  N3:{
+    id:'N3', type:'ProcessNode', title:'N3 (3nm-class)', src:'s4', confidence:.92, controlled:true,
+    interfaces:['IHasYield','IHasRoadmap','IHasSource',{n:'IExportControlled',ctrl:true}],
+    summary:'3nm 级 FinFET 逻辑制程节点。marketing node「N3」为商业命名，与物理栅长不等价——本体单独保留 marketingNode 与 physicalGateLength，禁止互推。当前状态 HVM（量产）。',
+    facts:[
+      ['marketingNode','N3',false,'official',.98,'2024-Q1','s4'],
+      ['transistorType','FinFET',false,'official',.95,'2024-Q1','s4'],
+      ['status','HVM (量产)',false,'official',.92,'2024-Q4','s1'],
+      ['riskProductionYr','2021',false,'analyst',.80,'2024-Q1','s2'],
+      ['eccn','受先进逻辑制程相关条目管制',true,'official',.90,'2024-Q1','s4'],
+      ['controlThreshold','适用于先进逻辑节点的工艺/设备',true,'official',.88,'2024-Q1','s4'],
+    ],
+    entities:['N3','N5','N2','EUV光刻','FinFET','代工厂A'],
+    links:[
+      {lt:'succeedsNode', to:'N5', card:'one-to-one', label:'后继于'},
+      {lt:'precedesNode', to:'N2', card:'one-to-one', label:'前驱为'},
+      {lt:'requiresEquipment', to:'EUV', card:'many-to-many', label:'依赖设备'},
+      {lt:'operatedBy', to:'FoundryA', card:'many-to-one', label:'运营方'},
+    ],
+    timeline:[
+      ['2021','风险试产 (risk production)','analyst · conf 0.80'],
+      ['2022','进入量产 HVM','official · earnings'],
+      ['2024-Q4','状态确认 HVM · AdvanceRoadmap','official'],
+    ],
+  },
+  N5:{
+    id:'N5', type:'ProcessNode', title:'N5 (5nm-class)', src:'s1', confidence:.90, controlled:false,
+    interfaces:['IHasYield','IHasRoadmap','IHasSource'],
+    summary:'5nm 级 FinFET 成熟先进节点，N3 的前代。良率与产能数据较充分。',
+    facts:[
+      ['marketingNode','N5',false,'official',.98,'2023','s1'],
+      ['status','HVM (量产)',false,'official',.96,'2024-Q4','s1'],
+      ['yieldRate','0.82',false,'analyst',.78,'2024-Q2','s2'],
+    ],
+    entities:['N5','N3','EUV光刻'],
+    links:[
+      {lt:'precedesNode', to:'N3', card:'one-to-one', label:'前驱为'},
+      {lt:'requiresEquipment', to:'EUV', card:'many-to-many', label:'依赖设备'},
+    ],
+    timeline:[['2020','量产 HVM','official']],
+  },
+  N2:{
+    id:'N2', type:'ProcessNode', title:'N2 (2nm-class · GAA)', src:'s2', confidence:.62, controlled:true,
+    interfaces:['IHasRoadmap','IHasSource',{n:'IExportControlled',ctrl:true}],
+    summary:'2nm 级节点，预期采用 GAA (Gate-All-Around) 晶体管结构。处于风险试产阶段，部分数据为机构预测与渠道传闻，置信度低。',
+    facts:[
+      ['marketingNode','N2',false,'analyst',.85,'2024-Q1','s2'],
+      ['transistorType','GAA (预期)',false,'analyst',.72,'2024-Q1','s2'],
+      ['status','risk production (预期)',false,'rumor',.55,'2024-Q2','s3'],
+      ['eccn','受先进逻辑制程相关条目管制',true,'official',.88,'2024-Q1','s4'],
+    ],
+    entities:['N2','N3','GAA'],
+    links:[{lt:'succeedsNode', to:'N3', card:'one-to-one', label:'后继于'}],
+    timeline:[['2025E','预期风险试产','analyst+rumor · 低置信']],
+  },
+  EUV:{
+    id:'EUV', type:'Equipment', title:'EUV 光刻机 (型号 X)', src:'s4', confidence:.93, controlled:true,
+    interfaces:[{n:'IExportControlled',ctrl:true},'IHasSource'],
+    summary:'极紫外光刻设备，先进逻辑/存储制程关键瓶颈设备，受多法域出口管制。供应高度集中（单点依赖）。',
+    facts:[
+      ['category','EUV Lithography',false,'official',.97,'2024','s4'],
+      ['eccn','先进光刻设备相关 ECCN 条目',true,'official',.93,'2024','s4'],
+      ['controlThreshold','受先进制程出口管制',true,'official',.90,'2024','s4'],
+      ['supplierCount','1 (单点依赖)',false,'analyst',.85,'2024','s2'],
+    ],
+    entities:['EUV','N3','N5','设备商D'],
+    links:[
+      {lt:'requiredBy', to:'N3', card:'many-to-many', label:'被需求'},
+      {lt:'requiredBy', to:'N5', card:'many-to-many', label:'被需求'},
+      {lt:'suppliedBy', to:'EquipVendorD', card:'many-to-one', label:'供应商'},
+      {lt:'subjectToControl', to:'ExportRule', card:'many-to-many', label:'受控于'},
+    ],
+    timeline:[['2024','标记受控 · MarkExportControlled','compliance']],
+  },
+  FoundryA:{
+    id:'FoundryA', type:'Foundry', title:'代工厂 A (Foundry-A)', src:'s1', confidence:.94, controlled:false,
+    interfaces:['IHasCapacity','IHasYield','IHasSource'],
+    summary:'纯晶圆代工企业（匿名化）。运营多座先进 Fab，为多家无晶圆设计公司代工。产能采用双时间轴建模。',
+    facts:[
+      ['capacityWSPM','120,000 片/月 (300mm等效)',false,'official',.95,'2024-Q4','s1'],
+      ['utilizationRate','0.91',false,'official',.90,'2024-Q4','s1'],
+      ['capexAmount','USD (见财报) · fxAsOf 2024-Q4',false,'official',.93,'2024-Q4','s1'],
+    ],
+    // bitemporal demo: capacity revised over time
+    bitemporal:{
+      key:'capacityWSPM',
+      observations:[
+        {validTime:'2023-Q1', value:'78,000 片/月', tier:'analyst', conf:.78, txTime:'2023-Q1', superseded:false},
+        {validTime:'2024-Q1', value:'102,000 片/月', tier:'analyst', conf:.80, txTime:'2024-Q1', superseded:true},
+        {validTime:'2024-Q1', value:'95,000 片/月 (修正)', tier:'official', conf:.93, txTime:'2024-Q4', superseded:false},
+        {validTime:'2024-Q4', value:'120,000 片/月', tier:'official', conf:.95, txTime:'2024-Q4', superseded:false},
+      ]
+    },
+    entities:['代工厂A','N3','设计公司B'],
+    links:[
+      {lt:'operates', to:'N3', card:'one-to-many', label:'运营节点'},
+      {lt:'manufacturesFor', to:'FablessB', card:'one-to-many', label:'代工于'},
+    ],
+    timeline:[
+      ['2024-Q1','产能机构估计 102K (后被修正)','analyst · superseded'],
+      ['2024-Q4','产能修正 95K→120K · ReviseCapacity','official · earnings'],
+    ],
+  },
+  FablessB:{
+    id:'FablessB', type:'FablessCompany', title:'设计公司 B (Fabless-B)', src:'s2', confidence:.88, controlled:false,
+    interfaces:['IHasSource'],
+    summary:'无晶圆设计公司（匿名化），在代工厂 A 流片其旗舰产品。',
+    facts:[['businessModel','Fabless',false,'analyst',.9,'2024','s2']],
+    entities:['设计公司B','N3','代工厂A'],
+    links:[
+      {lt:'fabricatesAt', to:'N3', card:'many-to-one', label:'流片于'},
+      {lt:'manufacturedBy', to:'FoundryA', card:'many-to-one', label:'代工方'},
+    ],
+    timeline:[],
+  },
+  EquipVendorD:{
+    id:'EquipVendorD', type:'EquipmentVendor', title:'设备商 D (EquipVendor-D)', src:'s4', confidence:.92, controlled:false,
+    interfaces:['IHasSource'],
+    summary:'先进光刻设备供应商（匿名化），关键设备市场供应高度集中。',
+    facts:[['segment','先进光刻设备',false,'official',.92,'2024','s4']],
+    entities:['设备商D','EUV'],
+    links:[{lt:'suppliesEquipment', to:'EUV', card:'one-to-many', label:'供应'}],
+    timeline:[],
+  },
+  ExportRule:{
+    id:'ExportRule', type:'Compliance', title:'出口管制规则 (ExportControlRule)', src:'s4', confidence:.90, controlled:true,
+    interfaces:[{n:'IExportControlled',ctrl:true}],
+    summary:'管制规则对象：仅记录「某实体被某规则关联」的事实、规则引用与来源留痕。法律结论交合规专家——本体标记不判断。',
+    facts:[
+      ['ruleRef','(规则引用 · 由合规填充)',true,'official',.9,'2024','s4'],
+      ['jurisdiction','(管辖区 · 由合规填充)',true,'official',.9,'2024','s4'],
+      ['effectiveDate','(生效日 · 由合规填充)',true,'official',.9,'2024','s4'],
+    ],
+    entities:['出口管制规则','EUV','N3'],
+    links:[
+      {lt:'controls', to:'EUV', card:'many-to-many', label:'管制'},
+      {lt:'controls', to:'N3', card:'many-to-many', label:'管制'},
+    ],
+    timeline:[],
+  },
+};
+let activeWiki='N3';
+let asOfMode='current'; // current | asof
+let asOfYear=2023;
+
+/* ==========================================================================
+   DATA — Ontology graph (curated layout)
+========================================================================== */
+let ontoNodes=[
+  {id:'FablessB', x:130, y:150, r:30},
+  {id:'FoundryA', x:330, y:135, r:35},
+  {id:'N5', x:530, y:78, r:28},
+  {id:'N3', x:545, y:240, r:37},
+  {id:'N2', x:760, y:170, r:28},
+  {id:'EUV', x:510, y:430, r:35},
+  {id:'EquipVendorD', x:285, y:430, r:28},
+  {id:'ExportRule', x:765, y:440, r:31},
+];
+let ontoEdges=[
+  {s:'FablessB', t:'FoundryA', lt:'manufacturedBy'},
+  {s:'FoundryA', t:'N3', lt:'operates'},
+  {s:'N5', t:'N3', lt:'precedesNode'},
+  {s:'N3', t:'N2', lt:'precedesNode'},
+  {s:'N3', t:'EUV', lt:'requiresEquipment'},
+  {s:'N5', t:'EUV', lt:'requiresEquipment'},
+  {s:'EquipVendorD', t:'EUV', lt:'suppliesEquipment'},
+  {s:'EUV', t:'ExportRule', lt:'subjectToControl'},
+  {s:'N3', t:'ExportRule', lt:'subjectToControl'},
+  {s:'FablessB', t:'N3', lt:'fabricatesAt'},
+];
+let activeNode='N3';
+let highlightedPath=null;
+let graphTypeFilters=null; // set lazily
+let showControlledNodes=true;
+
+/* ==========================================================================
+   DATA — Action queue, memories
+========================================================================== */
+let actionQueue=[
+  {id:'a1', type:'AdvanceRoadmap', target:'N2 (2nm-class)', status:'pending', risk:'medium',
+   desc:'财报披露 N2 进入 risk production，确认是否推进路线图状态 development→risk'},
+  {id:'a2', type:'MarkExportControlled', target:'EUV 光刻机', status:'pending', risk:'high',
+   desc:'先进光刻设备建议标记 IExportControlled，迁入受控分区（需合规角色执行）'},
+  {id:'a3', type:'PromoteToOntology', target:'国产设备链 (候选)', status:'pending', risk:'low',
+   desc:'设备链 Wiki Asset 升格为 SupplyChain Object Type（需沙箱预演）'},
+];
+let memories=[
+  {time:'2024-Q4 · 永久', text:'N3 状态确认 HVM；产能经 ReviseCapacity 修正至 120K WSPM。'},
+  {time:'2024-Q4 · 永久', text:'EUV 单点依赖叠加出口管制，列为最高优先风险项。'},
+];
+
+/* ---------- nav state ---------- */
+const NAV=[
+  {id:'sources', label:'来源', icon:ICON.sources},
+  {id:'wiki', label:'Wiki', icon:ICON.wiki},
+  {id:'ontology', label:'本体', icon:ICON.onto},
+  {id:'workshop', label:'决策', icon:ICON.workshop},
+  {id:'ask', label:'问答', icon:ICON.ask},
+  {id:'generate', label:'生成', icon:ICON.gen},
+];
+let activeNav='sources';
+let activeWorkshop='risk';
+let activeScope='wiki';
+let activeModel='Claude Sonnet';
+let lastAnswer='';
+let procJobs=[];
+
+const $=id=>document.getElementById(id);
+function selectedFile(){return files.find(f=>f.id===activeFile)||files[0];}
+function selectedWiki(){return wikiPages[activeWiki]||wikiPages.N3;}
+/* ==========================================================================
+   TOAST + helpers
+========================================================================== */
+let toastTimer;
+function toast(html, ctrl){
+  const el=$('toast');
+  el.innerHTML=`<span class="ti ${ctrl?'ctrl':''}">${ctrl?'🔒':'◈'}</span><span>${html}</span>`;
+  el.classList.add('show'); clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'), 3200);
+}
+
+/* ==========================================================================
+   ROLE
+========================================================================== */
+function renderRole(){
+  const sel=$('roleSelect');
+  sel.innerHTML=Object.entries(ROLES).map(([k,v])=>`<option value="${k}" ${role===k?'selected':''}>${v.label}</option>`).join('');
+  sel.onchange=()=>{ role=sel.value; renderRole(); rerenderAll();
+    toast(`权限切换 → <b>${ROLES[role].label}</b> · ${clearanceText()}`); };
+  const cl=$('clearance');
+  cl.className='clearance clr-'+accessMode();
+  cl.textContent=clearanceText();
+}
+function clearanceText(){
+  return {hidden:'受控隐藏',masked:'受控脱敏 ••••',summary:'受控摘要',clear:'受控明文'}[accessMode()];
+}
+
+/* ==========================================================================
+   RAIL
+========================================================================== */
+function renderRail(){
+  const pending=actionQueue.filter(a=>a.status==='pending').length;
+  $('rail').innerHTML=NAV.map((n,i)=>`
+    ${i===3?'<div class="rail-sep"></div>':''}
+    <button class="nav-btn ${activeNav===n.id?'active':''}" data-nav="${n.id}">
+      ${n.icon}<span>${n.label}</span>
+      ${n.id==='workshop'&&pending?`<span class="nav-count">${pending}</span>`:''}
+    </button>`).join('');
+  document.querySelectorAll('[data-nav]').forEach(b=>b.onclick=()=>switchNav(b.dataset.nav));
+  $('actionBadge').textContent=pending;
+  $('actionBadge').style.display=pending?'grid':'none';
+}
+function switchNav(id){
+  activeNav=id; renderRail();
+  document.querySelectorAll('.view').forEach(v=>{v.classList.remove('active'); if(v.id!=='view-ontology')v.style.display='';});
+  $('view-ontology').style.display=(id==='ontology')?'block':'none';
+  const v=$('view-'+id); v.classList.add('active');
+  renderLeft(); renderActive();
+  $('stage').scrollTop=0;
+}
+function renderActive(){
+  ({sources:renderSources, wiki:renderWiki, ontology:renderOntology,
+    workshop:renderWorkshop, ask:renderAsk, generate:renderGenerate}[activeNav]||(()=>{}))();
+}
+function rerenderAll(){ renderRail(); renderLeft(); renderActive(); }
+
+/* ==========================================================================
+   LEFT PANEL (context-sensitive)
+========================================================================== */
+function renderLeft(){
+  const left=$('left');
+
+  if(activeNav==='sources'){
+    left.innerHTML=`
+      <div class="left-head"><h3>来源 Sources</h3><p>ingest · MinerU · build wiki</p></div>
+      <div class="left-body">
+        <div class="upload-zone" id="uploadZone">
+          <div class="uz-ic">${ICON.upload}</div>
+          <b>上传文档 / ingest asset</b>
+          <p>上传后自动调用 MinerU 解析</p>
+          <div class="fmt-row">${['PDF','DOCX','PPTX','XLSX','MD','TXT'].map(f=>`<span class="fmt">${f}</span>`).join('')}</div>
+        </div>
+        <div id="procList"></div>
+        ${files.map(fileCard).join('')}
+      </div>`;
+    bindUpload(); bindFileCards(); renderProcList();
+    return;
+  }
+
+  if(activeNav==='wiki'){
+    left.innerHTML=`
+      <div class="left-head"><h3>Wiki / Objects</h3><p>${Object.keys(wikiPages).length} objects · backing datasource</p></div>
+      <div class="left-body">
+        ${Object.values(wikiPages).map(w=>{
+          if(w.controlled && accessMode()==='hidden') return '';
+          return `<div class="file-card ${activeWiki===w.id?'active':''}" data-wiki="${w.id}">
+            <div class="file-top">
+              <div class="file-icon" style="background:${typeColor(w.type)}1a;color:${typeColor(w.type)}">${ICON.wiki}</div>
+              <div style="min-width:0">
+                <div class="file-name">${w.title}</div>
+                <div class="file-meta"><span class="mini">${w.type}</span><span class="mini">conf ${(w.confidence*100).toFixed(0)}%</span></div>
+              </div>
+            </div>
+            ${w.controlled?'<span class="file-lock">🔒</span>':''}
+          </div>`;
+        }).join('')}
+      </div>`;
+    document.querySelectorAll('[data-wiki]').forEach(el=>el.onclick=()=>{openObject(el.dataset.wiki);});
+    return;
+  }
+
+  if(activeNav==='ontology'){
+    const visNodes=ontoNodes.filter(n=>{const o=wikiPages[n.id]; return !(o&&o.controlled&&accessMode()==='hidden');});
+    left.innerHTML=`
+      <div class="left-head"><h3>本体资产</h3><p>${visNodes.length} objects · ${ontoEdges.length} links</p></div>
+      <div class="left-body">
+        ${visNodes.map(n=>{const o=wikiPages[n.id]; if(!o)return '';
+          return `<div class="file-card ${activeNode===n.id?'active':''}" data-node-left="${n.id}">
+            <div class="file-top">
+              <div class="file-icon" style="background:${typeColor(o.type)}1a;color:${typeColor(o.type)}">${ICON.onto}</div>
+              <div style="min-width:0"><div class="file-name">${o.title.split(' (')[0]}</div>
+              <div class="file-meta"><span class="mini">${o.type}</span></div></div>
+            </div>${o.controlled?'<span class="file-lock">🔒</span>':''}
+          </div>`;}).join('')}
+      </div>`;
+    document.querySelectorAll('[data-node-left]').forEach(el=>el.onclick=()=>{selectGraphNode(el.dataset.nodeLeft);});
+    return;
+  }
+
+  if(activeNav==='workshop'){
+    const apps=[['risk','供应链风险','单点依赖 · HHI · 替代源'],['node','制程竞争态势','节点玩家 · 状态 · 路线图'],
+      ['capacity','产能追踪','as-of 产能 · 扩产事件'],['control','合规暴露','受控字段 · rule · audit']];
+    left.innerHTML=`
+      <div class="left-head"><h3>决策 Workshop</h3><p>ontology-driven apps</p></div>
+      <div class="left-body">
+        ${apps.map(a=>`<div class="file-card ${activeWorkshop===a[0]?'active':''}" data-ws="${a[0]}">
+          <div class="file-name">${a[1]}</div>
+          <div class="qc-desc" style="margin-top:5px;font-size:11.5px">${a[2]}</div>
+        </div>`).join('')}
+      </div>`;
+    document.querySelectorAll('[data-ws]').forEach(el=>el.onclick=()=>{activeWorkshop=el.dataset.ws;renderLeft();renderWorkshop();});
+    return;
+  }
+
+  if(activeNav==='ask'){
+    left.innerHTML=`
+      <div class="left-head"><h3>Ask 检索范围</h3><p>grounded by authorized assets</p></div>
+      <div class="left-body">
+        <div class="card pad">
+          <b style="font-size:13px">当前授权范围</b>
+          <div class="tag-row">
+            <span class="tag blue"><span class="d"></span>${files.filter(f=>!(f.controlled&&accessMode()==='hidden')).length} sources</span>
+            <span class="tag teal"><span class="d"></span>${Object.values(wikiPages).filter(w=>!(w.controlled&&accessMode()==='hidden')).length} wiki</span>
+            <span class="tag violet"><span class="d"></span>${ontoNodes.length} nodes</span>
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">检索仅覆盖当前角色（${ROLES[role].label}）可见知识，受控内容按权限过滤。</p>
+        </div>
+        <div class="section"><div class="section-h">建议问题</div>
+          <div class="suggest" id="suggestList"></div>
+        </div>
+      </div>`;
+    renderSuggest();
+    return;
+  }
+
+  if(activeNav==='generate'){
+    left.innerHTML=`
+      <div class="left-head"><h3>生成中心</h3><p>report · ppt · pdf · charts</p></div>
+      <div class="left-body">
+        <div class="card pad">
+          <b style="font-size:13px">生成配置</b>
+          <div style="font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:9px;line-height:1.8">
+            scope · ${scopeLabel(activeScope)}<br>model · ${activeModel}
+          </div>
+          <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5">生成内容接地于授权范围内的来源、Wiki、本体；受控内容按角色过滤后再交模型。</p>
+        </div>
+      </div>`;
+  }
+}
+const scopeLabel=s=>({wiki:'Wiki 条目',ontology:'本体图谱',sources:'来源文件',compare:'双文件对比'}[s]||s);
+
+function fileCard(f){
+  const ctrlHidden=f.controlled&&accessMode()==='hidden';
+  return `<div class="file-card ${activeFile===f.id?'active':''}" data-file="${f.id}">
+    <div class="file-top">
+      <div class="file-icon ${f.controlled?'ctrl':''}">${ICON.pdf}</div>
+      <div style="min-width:0">
+        <div class="file-name">${f.title}</div>
+        <div class="file-meta">
+          <span class="tier ${f.tier}"><span class="d"></span>${f.tier}</span>
+          <span class="mini">${ctrlHidden?'受限':f.size}</span>
+        </div>
+      </div>
+    </div>
+    <div class="file-meta" style="margin-top:9px">
+      <span class="mini">${f.parsed?'parsed':'parsing'}</span>
+      <span class="mini">${f.wikiBuilt?'wiki built':'pending'}</span>
+    </div>
+    ${f.controlled?'<span class="file-lock">🔒</span>':''}
+  </div>`;
+}
+function bindFileCards(){
+  document.querySelectorAll('[data-file]').forEach(c=>c.onclick=()=>selectSource(c.dataset.file));
+}
+function selectSource(id){
+  activeFile=id; renderLeft(); renderSources();
+  const f=selectedFile();
+  if(f.controlled&&accessMode()==='hidden'){ toast(`<b>${f.name}</b> 受出口管制 · 当前角色无预览权限`, true); return; }
+}
+
+/* ==========================================================================
+   UPLOAD → MinerU PARSE PIPELINE → BUILD WIKI
+========================================================================== */
+const PARSE_STAGES=[{lbl:'上传'},{lbl:'MinerU\nIngest'},{lbl:'Deep Read\nTOC'},{lbl:'Retrieve\nIndex'},{lbl:'Wiki\nReady'}];
+const FT_TIER={pdf:'analyst',docx:'rumor',doc:'rumor',pptx:'analyst',ppt:'analyst',xlsx:'official',xls:'official',md:'analyst',txt:'rumor',csv:'official',html:'rumor'};
+function bindUpload(){
+  const uz=$('uploadZone'); if(!uz)return;
+  uz.onclick=()=>$('fileInput').click();
+  uz.ondragover=e=>{e.preventDefault();uz.classList.add('drag');};
+  uz.ondragleave=()=>uz.classList.remove('drag');
+  uz.ondrop=e=>{e.preventDefault();uz.classList.remove('drag');handleFiles(e.dataTransfer.files);};
+}
+function handleFiles(list){
+  const arr=[...list]; if(!arr.length)return;
+  arr.forEach(file=>{
+    const ft=(file.name.split('.').pop()||'FILE').toLowerCase();
+    const job={id:'job_'+Math.random().toString(36).slice(2,8), name:file.name, ft:ft.toUpperCase(), stage:0, done:false, built:false};
+    procJobs.unshift(job); runParse(job);
+  });
+  if(activeNav!=='sources'){activeNav='sources';switchNav('sources');}
+  renderProcList();
+  toast(`已上传 <b>${arr.length}</b> 个文件 · 自动调用 MinerU 解析中…`);
+}
+function runParse(job){
+  const tick=()=>{
+    if(job.stage<PARSE_STAGES.length-1){ job.stage++; renderProcList(); setTimeout(tick, 620+Math.random()*420); }
+    else { job.done=true; renderProcList(); }
+  };
+  setTimeout(tick, 480);
+}
+function renderProcList(){
+  const el=$('procList'); if(!el)return;
+  el.innerHTML=procJobs.map(j=>{
+    const stages=PARSE_STAGES.map((s,i)=>{
+      const done=j.done||i<j.stage, active=!j.done&&i===j.stage;
+      return `<div class="stg ${done?'done':''} ${active?'active':''}">
+        <div class="ring">${done?'✓':active?'◴':i+1}</div>
+        <div class="lbl">${s.lbl.replace('\n','<br>')}</div></div>`;
+    }).join('');
+    const stateCls=j.built?'built':j.done?'ready':'parsing';
+    const stateTxt=j.built?'wiki built':j.done?'解析完成':'解析中';
+    return `<div class="proc-card">
+      <div class="pc-top"><span class="pc-ft">${j.ft}</span><span class="pc-name">${j.name}</span>
+        <span class="pc-state ${stateCls}">${stateTxt}</span></div>
+      <div class="stages">${stages}</div>
+      <button class="btn grad sm build-wiki ${j.done&&!j.built?'show':''}" data-build="${j.id}">⚡ 一键构建 Wiki (LLM-Wiki)</button>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('[data-build]').forEach(b=>b.onclick=()=>buildUploadedWiki(b.dataset.build));
+}
+
+const BUILT_TEMPLATES=[
+  {type:'Product', title:'AI 加速器 G (Accelerator-G)', controlled:true,
+   summary:'高性能 AI 训练加速器（匿名化）。采用先进逻辑节点 + 先进封装，受出口管制。由 LLM-Wiki 从上传文档一体抽取。',
+   interfaces:['IHasProcessNode','IHasSource',{n:'IExportControlled',ctrl:true}],
+   facts:[['productType','AI Accelerator',false,'analyst',.9,'2024'],['nodeUsed','N3',false,'analyst',.85,'2024'],
+     ['packaging','CoWoS (2.5D)',false,'analyst',.82,'2024'],['eccn','高性能计算芯片相关条目',true,'official',.88,'2024']],
+   entities:['AI加速器G','N3','CoWoS'],
+   links:[{lt:'fabricatesAt',to:'N3',card:'many-to-one',label:'流片于'}]},
+  {type:'Material', title:'EUV 光刻胶 (Photoresist-E)', controlled:true,
+   summary:'EUV 制程专用光刻胶（匿名化）。供应高度集中，部分牌号受管制。LLM-Wiki 抽取。',
+   interfaces:['IHasSource',{n:'IExportControlled',ctrl:true}],
+   facts:[['category','EUV Photoresist',false,'official',.93,'2024'],['supplierCount','3',false,'analyst',.8,'2024'],
+     ['eccn','先进光刻材料相关条目',true,'official',.85,'2024']],
+   entities:['EUV光刻胶','N3'],
+   links:[{lt:'requiredBy',to:'N3',card:'many-to-many',label:'被需求'}]},
+  {type:'Standard', title:'HBM 存储标准 (HBM-Std)', controlled:false,
+   summary:'高带宽存储 JEDEC 标准（匿名化）。由 LLM-Wiki 从标准文档抽取条款与版本关系。',
+   interfaces:['IHasSource'],
+   facts:[['family','High Bandwidth Memory',false,'official',.97,'2024'],['org','JEDEC',false,'official',.96,'2024']],
+   entities:['HBM标准','JEDEC'],
+   links:[]},
+];
+const FREE_POS=[{x:155,y:545},{x:380,y:560},{x:630,y:560},{x:840,y:300}];
+let builtCount=0;
+function buildUploadedWiki(jobId){
+  const job=procJobs.find(j=>j.id===jobId); if(!job||job.built)return;
+  showBuildOverlay(job, ()=>{
+    const tpl=BUILT_TEMPLATES[builtCount%BUILT_TEMPLATES.length];
+    const newId='OBJ'+(builtCount++);
+    const tier=FT_TIER[job.ft.toLowerCase()]||'analyst';
+    const srcId='us_'+job.id;
+    files.unshift({id:srcId, name:job.name, title:'用户上传 · '+job.name, source:'用户上传',
+      date:new Date().toLocaleDateString('zh-CN'), type:'上传文档', size:'—', tier, parsed:true, wikiBuilt:true,
+      controlled:tpl.controlled, derived:newId,
+      abstract:'用户上传文档，已完成 MinerU 解析、整章 Deep Read、检索索引与 Wiki Object 实例化。',
+      facts:['MinerU 解析完成','候选实体/属性/关系已抽取','已进入本体资产池']});
+    wikiPages[newId]={id:newId, type:tpl.type, title:tpl.title, src:srcId, confidence:.76, controlled:tpl.controlled,
+      interfaces:tpl.interfaces, summary:tpl.summary,
+      facts:tpl.facts.map(f=>[...f, srcId]),
+      entities:tpl.entities,
+      links:tpl.links,
+      timeline:[['刚刚','LLM-Wiki 构建 · Object 实例化','genmodel · '+activeModel]]};
+    const pos=FREE_POS[(builtCount-1)%FREE_POS.length];
+    ontoNodes.push({id:newId, x:pos.x, y:pos.y, r:28});
+    tpl.links.forEach(l=>{if(wikiPages[l.to])ontoEdges.push({s:newId,t:l.to,lt:l.lt});});
+    job.built=true;
+    renderProcList();
+    toast(`⚡ <b>Wiki 构建完成</b> · 新 Object「${tpl.title.split(' (')[0]}」已入库并进入本体图`);
+    openObject(newId);
+  });
+}
+function showBuildOverlay(job, done){
+  if(activeNav!=='wiki'){activeNav='wiki';switchNav('wiki');}
+  const steps=['整章读取（无预分块）…','概念识别 → Object Type…','实体+属性抽取 → Object/Property…','交叉链接 → Link Type…','sourceTier 标注 + 置信度评分…','质量校验 → 入库'];
+  $('view-wiki').innerHTML=`<div class="page-title"><div>
+    <div class="pt-eyebrow">LLM-Wiki Engine</div><h1>构建中 · ${job.name}</h1></div></div>
+    <div class="gen-loading"><div class="gl-spin"></div><div class="gl-txt">正在构建 Wiki 页面 = Object 实例化</div>
+    <div class="gl-step" id="buildStep">${steps[0]}</div></div>`;
+  let i=0;
+  const iv=setInterval(()=>{i++; const s=$('buildStep');
+    if(i<steps.length){if(s)s.textContent=steps[i];}else{clearInterval(iv);done();}}, 420);
+}
+/* ==========================================================================
+   SOURCES VIEW
+========================================================================== */
+function renderSources(){
+  const f=selectedFile();
+  const ctrlHidden=f.controlled&&accessMode()==='hidden';
+  if(ctrlHidden){
+    $('view-sources').innerHTML=`<div class="page-title"><div>
+      <div class="pt-eyebrow">Sources · MinerU Pipeline</div><h1>受限来源</h1></div></div>
+      <div class="deny-card"><div class="di">🔒</div><div><b>该来源受出口管制 · 当前角色（${ROLES[role].label}）无权预览</b>
+      <p>「${f.name}」标记为受控文档，使用本地 LLM 推理不出域。切换到 Compliance 角色可查看。</p></div></div>`;
+    return;
+  }
+  $('view-sources').innerHTML=`
+    <div class="page-title">
+      <div>
+        <div class="pt-eyebrow">Sources · MinerU Pipeline</div>
+        <h1>${f.title}</h1>
+        <p>来源层负责资产摄入、MinerU 解析、Deep Read 整章读取、Retrieve 索引构建，并把结构化章节输入 LLM-Wiki 引擎。这是本体资产的生产入口，而非简单上传。</p>
+        <div class="tag-row">
+          <span class="tier ${f.tier}"><span class="d"></span>${f.tier}</span>
+          <span class="tag">${f.source}</span><span class="tag">${f.date}</span>
+          <span class="tag teal"><span class="d"></span>MinerU parsed</span>
+          ${f.wikiBuilt?'<span class="tag violet"><span class="d"></span>wiki built</span>':''}
+          ${f.controlled?'<span class="tag red"><span class="d"></span>controlled</span>':''}
+        </div>
+      </div>
+      <button class="btn grad" id="goWiki">查看生成的 Object →</button>
+    </div>
+
+    <div class="grid two" style="align-items:start">
+      <div class="card pad">
+        <div class="section-h" style="margin-top:0">parsed abstract</div>
+        <p style="color:var(--ink2);line-height:1.75;font-size:13.5px">${f.abstract}</p>
+        <div class="section-h">grounded facts <span class="sh-tag">Property / Link candidates</span></div>
+        <table><tbody>
+          ${f.facts.map((x,i)=>`<tr><td style="width:24px;color:var(--faint);font-family:var(--mono)">${i+1}</td>
+            <td>${x}</td><td style="width:140px"><span class="tag green"><span class="d"></span>candidate</span></td></tr>`).join('')}
+        </tbody></table>
+      </div>
+
+      <div class="card pad">
+        <div class="section-h" style="margin-top:0">从文档到本体资产</div>
+        ${[['Ingest','文档进入队列，计算指纹，保留 sourceTier 先验','done'],
+           ['MinerU','版面/段落/表格/目录树与整章文本提取','done'],
+           ['LLM-Wiki','Object / Property / Link / Interface 一体构建','done'],
+           ['Quality Gate','置信度 / sourceTier / 单位 / 别名 / 受控信号校验','done'],
+           ['Ontology','候选 Object/Link 进入本体层，等待 Action 写入','done']
+          ].map((s,i)=>`<div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)">
+            <div style="width:24px;height:24px;border-radius:7px;background:var(--grad);color:#fff;display:grid;place-items:center;font-size:12px;flex:none">✓</div>
+            <div><b style="font-size:13px">${s[0]}</b><p style="font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.5">${s[1]}</p></div>
+          </div>`).join('')}
+        <div class="tag-row" style="margin-top:16px">
+          <button class="btn secondary sm" onclick="toast('重新解析任务已提交')">重新解析</button>
+          <button class="btn secondary sm" onclick="toast('结构化 Markdown 已导出')">导出 Markdown</button>
+        </div>
+      </div>
+    </div>`;
+  $('goWiki').onclick=()=>{ if(f.derived&&wikiPages[f.derived]){openObject(f.derived);} else {activeNav='wiki';switchNav('wiki');} };
+}
+
+/* ==========================================================================
+   WIKI / OBJECT VIEW
+========================================================================== */
+function openObject(id){
+  if(!wikiPages[id])return;
+  activeWiki=id;
+  if(activeNav!=='wiki'){activeNav='wiki';switchNav('wiki');return;} // switchNav calls renderWiki
+  renderWiki(); renderLeft(); $('stage').scrollTop=0;
+}
+function canSeeObject(id){const o=wikiPages[id]; return !o||!o.controlled||canSeeControlled();}
+
+function renderWiki(){
+  const w=selectedWiki();
+  if(w.controlled && !canSeeControlled()){
+    $('view-wiki').innerHTML=`<div class="page-title"><div>
+      <div class="pt-eyebrow">Wiki / Object</div><h1>受限 Object</h1></div></div>
+      <div class="deny-card"><div class="di">🔒</div><div>
+      <b>此 Object 受出口管制 · 当前角色（${ROLES[role].label}）无访问权限</b>
+      <p>「${w.title}」标记为受控实体。切换 Compliance 角色查看明文，Strategy 查看脱敏摘要。本体只记录受控事实与来源，法律结论交合规团队。</p></div></div>`;
+    return;
+  }
+  const color=typeColor(w.type);
+  const ifaceHtml=w.interfaces.map(i=>typeof i==='object'
+    ?`<span class="iface-chip ctrl">${i.n} 🔒</span>`:`<span class="iface-chip">${i}</span>`).join('');
+
+  // properties rows (with as-of override for bitemporal key)
+  const bt=w.bitemporal;
+  const rows=w.facts.map(r=>{
+    const [k,v,ctrl,tier,conf,asOf,srcId]=r;
+    let display=v, asofTag='';
+    if(asOfMode==='asof' && bt && k===bt.key){
+      const obs=bitemporalAt(bt, asOfYear);
+      if(obs){ display=obs.value+' ', asofTag=`<span class="tag amber" style="font-size:9.5px"><span class="d"></span>当时所知 ${obs.validTime}</span>`; }
+    }
+    const fd=fieldDisplay(display, ctrl);
+    const srcName=files.find(s=>s.id===srcId)?.name||srcId||'-';
+    return `<tr>
+      <td><b>${k}</b>${ctrl?' <span style="color:var(--red)">🔒</span>':''}</td>
+      <td><span class="${fd.masked?'masked':'val-mono'}">${fd.text}</span> ${asofTag}</td>
+      <td><span class="tier ${tier}"><span class="d"></span>${tier}</span></td>
+      <td><span class="conf-bar"><span class="track"><span class="fill" style="width:${(conf*100)}%"></span></span>${conf.toFixed(2)}</span></td>
+      <td class="val-mono" style="color:var(--faint)">${asOf}</td>
+      <td><span class="cite" data-jumpsrc="${srcId}" title="${srcName}">↩ ${srcName.length>14?srcName.slice(0,14)+'…':srcName}</span></td>
+    </tr>`;
+  }).join('');
+
+  const linksHtml=w.links.map(l=>{
+    const t=wikiPages[l.to]; const tHidden=t&&t.controlled&&accessMode()==='hidden';
+    return `<div class="link-card" data-link="${l.to}">
+      <div class="lt">${l.lt} <span class="card-rel">· ${l.card}</span></div>
+      <div class="tg">${l.label} <span class="arrow">→</span> ${tHidden?'🔒 受限实体':(t?t.title.split(' (')[0]:l.to)}</div>
+      <div class="lc-meta">${tHidden?'无权下钻':'点击在图谱中高亮 / 下钻'}</div>
+    </div>`;
+  }).join('');
+
+  const tlHtml=w.timeline.length?w.timeline.map(t=>
+    `<div class="tl"><time>${t[0]}</time><p>${t[1]}</p>${t[2]?`<div class="tl-who">${t[2]}</div>`:''}</div>`).join('')
+    :'<p style="color:var(--faint);font-family:var(--mono);font-size:11px">暂无时序事件</p>';
+
+  const acts=[['review','ReviewWikiPage','✓'],['correct','CorrectEntity','✎'],['merge','MergeEntities','⇄'],
+    ['promote','PromoteToOntology','↑'],['mark','MarkExportControlled','🔒']];
+  const actsHtml=acts.map(a=>{const ok=canAction(a[0]);
+    return `<button class="act-btn ${a[0]==='mark'?'ctrl':''} ${ok?'':'disabled'}" data-act="${a[0]}">
+      <span class="lk">${a[2]}</span>${a[1]}${ok?'':' · 无权'}</button>`;}).join('');
+
+  const btSlider = bt ? `
+    <div class="temporal">
+      <div class="temporal-head">
+        <b>⏱ 双时间轴视图 · Temporal</b>
+        <div class="mode-toggle">
+          <button class="${asOfMode==='current'?'on':''}" data-mode="current">当前真值</button>
+          <button class="${asOfMode==='asof'?'on asof':''}" data-mode="asof">as-of 决策时点</button>
+        </div>
+      </div>
+      <div class="slider-wrap">
+        <input type="range" min="2022" max="2024" step="1" value="${asOfYear}" id="asofSlider" ${asOfMode==='asof'?'':'disabled'}>
+        <span class="asof-readout">${asOfMode==='asof'?asOfYear+' 决策时点':'最新真值'}</span>
+      </div>
+      <div class="asof-note ${asOfMode==='asof'?'':'hide'}" id="asofNote"></div>
+    </div>` : '';
+
+  $('view-wiki').innerHTML=`
+    <div class="page-title">
+      <div>
+        <div class="pt-eyebrow">Wiki / Object · backing datasource</div>
+        <div class="obj-hero">
+          <div class="obj-badge" style="background:linear-gradient(135deg,${color},${color}aa)">${w.type[0]}</div>
+          <div>
+            <h1>${w.title}</h1>
+            <div class="tag-row"><span class="tag ink">${w.type}</span>${ifaceHtml}
+              ${w.controlled?'<span class="tag red"><span class="d"></span>controlled</span>':''}</div>
+          </div>
+        </div>
+      </div>
+      <button class="btn grad" data-act="promote" id="promoteTop">promote to ontology</button>
+    </div>
+
+    <div class="grid four">
+      <div class="kpi"><div class="val">${w.facts.length}</div><div class="label">Properties</div></div>
+      <div class="kpi"><div class="val">${w.entities.length}</div><div class="label">Entities</div></div>
+      <div class="kpi"><div class="val">${w.links.length}</div><div class="label">Links</div></div>
+      <div class="kpi"><div class="val">${(w.confidence*100).toFixed(0)}<small>%</small></div><div class="label">Confidence</div></div>
+    </div>
+
+    ${btSlider}
+
+    <div class="section"><div class="section-h">概念定义 · Definition</div>
+      <div class="card pad"><p class="lead-def">${w.summary}</p></div></div>
+
+    <div class="section"><div class="section-h">实体属性 · Properties <span class="sh-tag">value · sourceTier · confidence · as-of · grounding</span></div>
+      <div class="card"><table><thead><tr><th>属性</th><th>值</th><th>来源层级</th><th>置信度</th><th>as-of</th><th>来源回链</th></tr></thead>
+        <tbody>${rows}</tbody></table></div></div>
+
+    <div class="section"><div class="section-h">关联 · Links (Object Properties)</div>
+      <div class="links-grid">${linksHtml}</div></div>
+
+    <div class="section"><div class="section-h">时序 · Timeline (双时间轴变更)</div>
+      <div class="card pad"><div class="timeline">${tlHtml}</div></div></div>
+
+    <div class="section"><div class="section-h">动态层 · Actions (Kinetic) <span class="sh-tag">唯一合法写入通道 → writeback dataset</span></div>
+      <div class="card pad">
+        <p style="font-size:12.5px;color:var(--muted);line-height:1.65;margin-bottom:13px">所有修改必须通过 Action Type 执行。Action 校验权限、类型、状态机与受控策略，写入 writeback dataset，并反映到所有应用。</p>
+        <div class="action-deck">${actsHtml}</div>
+        <div style="font-family:var(--mono);font-size:10px;color:var(--faint);margin-top:12px">
+          当前角色 <b style="color:var(--violet)">${ROLES[role].label}</b> 可执行：${ROLES[role].actions.length?ROLES[role].actions.join(' · '):'（无）'}
+        </div>
+      </div></div>`;
+
+  // wire
+  document.querySelectorAll('[data-link]').forEach(c=>c.onclick=()=>{
+    const t=c.dataset.link, target=wikiPages[t];
+    if(target&&target.controlled&&accessMode()==='hidden'){toast('🔒 目标实体受限 · 无权下钻',true);return;}
+    activeNav='ontology'; switchNav('ontology'); highlightPath(activeWiki,t);
+    setTimeout(()=>selectGraphNode(t),360);
+  });
+  document.querySelectorAll('[data-jumpsrc]').forEach(c=>c.onclick=()=>{
+    const sid=c.dataset.jumpsrc; if(files.find(f=>f.id===sid)){activeFile=sid;activeNav='sources';switchNav('sources');toast('↩ 已回链至来源文档');}
+  });
+  document.querySelectorAll('.act-btn,#promoteTop').forEach(a=>a.onclick=()=>{
+    const act=a.dataset.act;
+    if(!canAction(act)){toast(`🔒 角色 <b>${ROLES[role].label}</b> 无权执行 <b>${act}</b>`, true);return;}
+    openActionModal(act, w);
+  });
+  // bitemporal slider
+  if(bt){
+    document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{asOfMode=b.dataset.mode;renderWiki();});
+    const sl=$('asofSlider');
+    if(sl){ sl.oninput=()=>{asOfYear=+sl.value;renderWiki();}; }
+    updateAsofNote(bt);
+  }
+}
+function bitemporalAt(bt, year){
+  // "what we knew at decision time": txTime <= year, latest by validTime then txTime
+  const q = year+'-Q'+(year===2024?1:1);
+  const cand=bt.observations.filter(o=>parseInt(o.txTime)<=year);
+  if(!cand.length)return null;
+  return cand.sort((a,b)=>{
+    if(a.validTime!==b.validTime) return a.validTime>b.validTime?-1:1;
+    return a.txTime>b.txTime?-1:1;
+  })[0];
+}
+function updateAsofNote(bt){
+  const note=$('asofNote'); if(!note||asOfMode!=='asof')return;
+  const known=bitemporalAt(bt, asOfYear);
+  const truth=bt.observations.filter(o=>!o.superseded).slice(-1)[0];
+  if(known&&truth&&known.value!==truth.value){
+    note.innerHTML=`⚠️ <span>当时（${asOfYear}）所知产能为 <b>${known.value}</b>（${known.tier} 来源）。事后经 ReviseCapacity 修正，真值为 <b>${truth.value}</b>。双时间轴保留两条记录，用于还原决策依据与审计。</span>`;
+    note.classList.remove('hide');
+  } else { note.classList.add('hide'); }
+}
+
+/* ==========================================================================
+   ACTION MODAL (4-element spec: 参数 / 校验 / 变更 / 副作用)
+========================================================================== */
+const ACTION_SPEC={
+  review:{title:'ReviewWikiPage', sub:'专家审核 Wiki 页面', ctrl:false, sandbox:false,
+    fields:[{l:'审核决定',t:'select',o:['approve 通过','reject 驳回','edit 修正']},{l:'审核意见',t:'textarea'}],
+    checks:[['仅授权专家角色可执行',1],['edit 时需提供修正内容',1]],
+    changes:['更新 Object.reviewStatus','approve → confidence 按 sourceTier 加权提升','reject → 标记废弃（保留审计轨迹）'],
+    effects:['通知原始抽取任务','写回 writeback dataset','更新所有引用该 Object 的应用']},
+  correct:{title:'CorrectEntity', sub:'修正实体信息', ctrl:false, sandbox:false,
+    fields:[{l:'属性名',t:'input',v:'capacityWSPM'},{l:'新值',t:'input'},{l:'来源层级',t:'select',o:['official','analyst','rumor']},{l:'修正理由',t:'textarea'}],
+    checks:[['新值类型与 Property 定义匹配',1],['official 级修正需双人审核',0]],
+    changes:['追加新值（带 transactionTime，版本化旧值）','更新当前展示值'],
+    effects:['触发下游关联 Link 重新验证','writeback dataset 更新']},
+  merge:{title:'MergeEntities', sub:'合并重复实体（含别名归一）', ctrl:false, sandbox:false,
+    fields:[{l:'主实体 ID',t:'input'},{l:'重复实体 ID',t:'input'},{l:'合并策略',t:'select',o:['keepPrimary','merge','manual']}],
+    checks:[['两实体 Object Type 必须相同',1],['合并后 Link 无循环引用',1]],
+    changes:['合并 Properties（按 sourceTier 优先级保留最优值）','迁移所有 Links 至 primary','归档 duplicate（保留审计）','新别名并入 alias 表'],
+    effects:['更新向量索引 (Qdrant)','更新别名表','通知引用 duplicate 的下游应用']},
+  promote:{title:'PromoteToOntology', sub:'种子升格为本体类', ctrl:false, sandbox:true,
+    fields:[{l:'目标 Object Type',t:'input'},{l:'父类',t:'input'},{l:'实现 Interface',t:'input',v:'IHasSource, IHasConfidence'}],
+    checks:[['频次阈值（≥N 文档共现）+ 专家确认',1],['强制沙箱预演：评估对现有查询/应用的影响',0]],
+    changes:['在 OWL 中创建新 Class（含 Interface 实现）','迁移种子实例为正式 Individual','更新 Object Type Group 索引'],
+    effects:['Protégé 同步（本体版本更新）','/api/onto/diff 生成变更报告','通知本体管理员审核']},
+  mark:{title:'MarkExportControlled', sub:'标记受控 · 合规关键', ctrl:true, sandbox:true,
+    fields:[{l:'ECCN 编码',t:'input'},{l:'关联规则 ruleRef',t:'input',v:'→ ExportControlRule'},{l:'管辖区',t:'input'},{l:'生效日期',t:'input'}],
+    checks:[['仅 Compliance 角色可执行',1],['ruleRef 须关联已存在的 ExportControlRule',1],['高风险：强制沙箱预演 → 影响评估 → 专家确认',0]],
+    changes:['叠加 IExportControlled 接口（eccn/entityListFlag/controlThreshold）','创建 subjectToControl Link → ExportControlRule','写入 ExportControl Event Object（时间戳/操作人/依据）'],
+    effects:['触发敏感分区迁移（字段加密 + 行级访问收紧）','合规暴露分析自动重算','通知相关供应链节点订阅用户','完整审计日志（谁/何时/依何规则）']},
+};
+function openActionModal(act, w){
+  const spec=ACTION_SPEC[act]; if(!spec)return;
+  const fieldsHtml=spec.fields.map(f=>{
+    if(f.t==='select') return `<div class="field-row"><label>${f.l}</label><select>${f.o.map(o=>`<option>${o}</option>`).join('')}</select></div>`;
+    if(f.t==='textarea') return `<div class="field-row"><label>${f.l}</label><textarea rows="2" placeholder="${f.l}…">${f.v||''}</textarea></div>`;
+    return `<div class="field-row"><label>${f.l}</label><input placeholder="${f.l}…" value="${f.v||''}"></div>`;
+  }).join('');
+  const checksHtml=spec.checks.map(c=>`<div class="check-item"><span class="ck ${c[1]?'':'warn'}">${c[1]?'✓':'!'}</span>${c[0]}</div>`).join('');
+  const changesHtml=spec.changes.map(c=>`<div class="effect-item"><span class="ei">→</span>${c}</div>`).join('');
+  const effectsHtml=spec.effects.map(e=>`<div class="effect-item"><span class="ei">⚡</span>${e}</div>`).join('');
+
+  $('modal').innerHTML=`
+    <div class="modal-head">
+      <div class="mh-ic ${spec.ctrl?'ctrl':'normal'}">${spec.ctrl?'🔒':'⚙'}</div>
+      <div><h3>${spec.title}</h3><div class="mh-sub">${spec.sub} · target: ${w.title.split(' (')[0]}</div></div>
+      <span class="mh-x" id="modalX">×</span>
+    </div>
+    <div class="modal-body">
+      <div class="act-spec"><div class="as-label"><span class="as-num">1</span>参数 Parameters</div>${fieldsHtml}</div>
+      <div class="act-spec"><div class="as-label"><span class="as-num">2</span>校验 Validation</div><div class="check-list">${checksHtml}</div></div>
+      ${spec.sandbox?`<div class="sandbox-note">⚠ <span>高风险操作 · 提交后将先进入<b>沙箱预演</b>，评估变更影响范围，经专家二次确认后才真正执行。</span></div>`:''}
+      <div class="act-spec" style="margin-top:16px"><div class="as-label"><span class="as-num">3</span>变更 Changes</div><div class="effect-list">${changesHtml}</div></div>
+      <div class="act-spec"><div class="as-label"><span class="as-num">4</span>副作用 Side Effects</div><div class="effect-list">${effectsHtml}</div></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn secondary" id="modalCancel">取消</button>
+      <button class="btn ${spec.ctrl?'red':'grad'}" id="modalSubmit">${spec.sandbox?'提交沙箱预演':'执行 Action'}</button>
+    </div>`;
+  $('modalOverlay').classList.add('show');
+  $('modalX').onclick=$('modalCancel').onclick=closeModal;
+  $('modalSubmit').onclick=()=>{closeModal();commitAction(act, w, spec);};
+}
+function closeModal(){$('modalOverlay').classList.remove('show');}
+function commitAction(act, w, spec){
+  if(act==='mark'){
+    w.controlled=true;
+    if(!w.interfaces.some(i=>typeof i==='object'&&i.n==='IExportControlled'))
+      w.interfaces.push({n:'IExportControlled',ctrl:true});
+    actionQueue.unshift({id:'a'+Date.now(), type:'MarkExportControlled', target:w.title.split(' (')[0],
+      status:'executed', risk:'high', desc:'IExportControlled 已叠加，实体迁入受控分区，访问收紧'});
+    toast(`🔒 <b>MarkExportControlled</b> 已执行 · 迁入敏感分区 · 访问收紧 · 审计留痕`, true);
+    renderRail(); renderWiki(); return;
+  }
+  if(act==='promote'){
+    if(!ontoNodes.some(n=>n.id===w.id)){
+      ontoNodes.push({id:w.id, x:200+Math.random()*560, y:130+Math.random()*340, r:30});
+      w.links.forEach(l=>{if(wikiPages[l.to])ontoEdges.push({s:w.id,t:l.to,lt:l.lt});});
+    }
+    actionQueue.unshift({id:'a'+Date.now(), type:'PromoteToOntology', target:w.title.split(' (')[0],
+      status:'pending', risk:'low', desc:'已进入沙箱预演，待专家确认后正式升格为 Object Type'});
+    toast(`↑ <b>PromoteToOntology</b> 已进入沙箱预演 · 待专家确认`);
+    renderRail(); return;
+  }
+  const labels={review:'ReviewWikiPage(approve)',correct:'CorrectEntity',merge:'MergeEntities'};
+  if(act==='review') w.confidence=Math.min(1, w.confidence+0.03);
+  actionQueue.unshift({id:'a'+Date.now(), type:spec.title, target:w.title.split(' (')[0],
+    status:'executed', risk:'low', desc:'action committed through writeback dataset'});
+  toast(`✓ <b>${labels[act]||spec.title}</b> 已提交 · 旧值版本化 · writeback 已记录`);
+  renderRail(); renderWiki();
+}
+/* ==========================================================================
+   ONTOLOGY GRAPH
+========================================================================== */
+function ensureFilters(){
+  if(graphTypeFilters===null){
+    graphTypeFilters={}; [...new Set(ontoNodes.map(n=>wikiPages[n.id]?.type).filter(Boolean))].forEach(t=>graphTypeFilters[t]=true);
+  } else {
+    [...new Set(ontoNodes.map(n=>wikiPages[n.id]?.type).filter(Boolean))].forEach(t=>{ if(!(t in graphTypeFilters))graphTypeFilters[t]=true; });
+  }
+}
+function nodeVisible(id){
+  const o=wikiPages[id]; if(!o)return false;
+  if(!graphTypeFilters[o.type])return false;
+  if(o.controlled){ if(accessMode()==='hidden')return false; if(!showControlledNodes)return false; }
+  return true;
+}
+function renderOntology(){
+  ensureFilters();
+  const types=Object.keys(graphTypeFilters);
+  const filtersHtml=types.map(t=>`<span class="fchip ${graphTypeFilters[t]?'on':''}" data-type="${t}">
+    <span class="d" style="background:${typeColor(t)}"></span>${t}</span>`).join('')
+    +`<span class="fchip ctrl-chip ${showControlledNodes?'on':''}" data-ctrl="1">🔒 受控实体</span>`;
+
+  $('view-ontology').innerHTML=`
+    <div class="stage-inner" style="padding-bottom:30px">
+      <div class="page-title">
+        <div>
+          <div class="pt-eyebrow">Ontology · Semantic + Kinetic + Security</div>
+          <h1>本体图谱</h1>
+          <p>本体不是静态知识图谱，而是同时承载 Object/Link/Interface、Action Type、Dynamic Security 与双时间轴的知识操作层。点击节点查看详情，点击 Wiki 的 Link 会在此高亮关系路径。</p>
+        </div>
+        <div class="tag-row" style="margin-top:0">
+          <button class="btn secondary sm" onclick="toast('/api/onto/test 一致性检测通过')">onto test</button>
+          <button class="btn secondary sm" onclick="toast('/api/onto/diff 版本对比已生成')">diff</button>
+        </div>
+      </div>
+
+      <div class="onto-toolbar">
+        <span style="font-family:var(--mono);font-size:10.5px;color:var(--faint)">FILTER ·</span>
+        <div class="filters" id="ontoFilters">${filtersHtml}</div>
+      </div>
+
+      <div class="ontology-wrap">
+        <svg id="ontoSvg" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet"></svg>
+        <div class="onto-panel">
+          <h4>本体分层 · Ontology Layers</h4>
+          <div class="layer"><span class="ld" style="background:#7c5cf0"></span><div><b>Semantic</b> <span>Object / Property / Link / Interface</span></div></div>
+          <div class="layer"><span class="ld" style="background:#3b7ff5"></span><div><b>Kinetic</b> <span>Action Type / Function / writeback</span></div></div>
+          <div class="layer"><span class="ld" style="background:#0fae9b"></span><div><b>Temporal</b> <span>validTime + transactionTime</span></div></div>
+          <div class="layer"><span class="ld" style="background:#e15a6d"></span><div><b>Security</b> <span>IExportControlled + OPA/Vault</span></div></div>
+        </div>
+        <div class="onto-detail" id="ontoDetail"></div>
+      </div>
+    </div>`;
+  // filters
+  document.querySelectorAll('#ontoFilters [data-type]').forEach(c=>c.onclick=()=>{
+    graphTypeFilters[c.dataset.type]=!graphTypeFilters[c.dataset.type]; renderOntology();});
+  document.querySelectorAll('#ontoFilters [data-ctrl]').forEach(c=>c.onclick=()=>{
+    showControlledNodes=!showControlledNodes; renderOntology();});
+  drawGraph();
+}
+function drawGraph(){
+  const svg=$('ontoSvg'); if(!svg)return;
+  const pos=Object.fromEntries(ontoNodes.map(n=>[n.id,n]));
+  let defs=`<defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#5a6a82"/></marker>
+    <marker id="arrHi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#9b87f5"/></marker>
+    <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>`;
+  let edgeSvg='';
+  ontoEdges.forEach(e=>{
+    if(!nodeVisible(e.s)||!nodeVisible(e.t))return;
+    const a=pos[e.s],b=pos[e.t]; if(!a||!b)return;
+    const hi=highlightedPath&&((highlightedPath.s===e.s&&highlightedPath.t===e.t)||(highlightedPath.s===e.t&&highlightedPath.t===e.s));
+    const isCtrl=e.lt==='subjectToControl';
+    const mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
+    edgeSvg+=`<g opacity="${highlightedPath&&!hi?0.16:1}">
+      <line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="${hi?'#9b87f5':(isCtrl?'#e15a6d':'#33405a')}"
+        stroke-width="${hi?2.6:1.5}" stroke-dasharray="${isCtrl?'5 4':'0'}" marker-end="url(#${hi?'arrHi':'arr'})"/>
+      <text class="edge-label" x="${mx}" y="${my-5}" text-anchor="middle" style="paint-order:stroke;stroke:#0b0e14;stroke-width:3px">${e.lt}</text></g>`;
+  });
+  let nodeSvg='';
+  ontoNodes.forEach(n=>{
+    if(!nodeVisible(n.id))return;
+    const o=wikiPages[n.id]; const c=typeColor(o.type);
+    const sel=n.id===activeNode;
+    const dim=highlightedPath&&highlightedPath.s!==n.id&&highlightedPath.t!==n.id;
+    const nm=o.title.split(' (')[0];
+    nodeSvg+=`<g data-node="${n.id}" style="cursor:pointer" opacity="${dim?0.32:1}">
+      <circle cx="${n.x}" cy="${n.y}" r="${n.r+8}" fill="${c}" opacity="0.10"/>
+      <circle cx="${n.x}" cy="${n.y}" r="${n.r}" fill="#141826" stroke="${c}" stroke-width="${sel?3:1.8}" ${sel?'filter="url(#glow)"':''}/>
+      <text class="node-label" x="${n.x}" y="${n.y-1}" text-anchor="middle" font-size="${nm.length>7?9.5:12}">${nm.length>9?nm.slice(0,8)+'…':nm}</text>
+      <text class="node-type" x="${n.x}" y="${n.y+13}" text-anchor="middle">${o.type}</text>
+      ${o.controlled?`<text x="${n.x+n.r-5}" y="${n.y-n.r+9}" font-size="13">🔒</text>`:''}</g>`;
+  });
+  svg.innerHTML=defs+edgeSvg+nodeSvg;
+  svg.querySelectorAll('[data-node]').forEach(g=>g.onclick=()=>selectGraphNode(g.dataset.node));
+}
+function selectGraphNode(id){
+  const o=wikiPages[id]; if(!o)return;
+  if(o.controlled&&accessMode()==='hidden'){toast('🔒 受控实体 · 无权查看',true);return;}
+  activeNode=id; activeWiki=id;
+  if(activeNav!=='ontology'){activeNav='ontology';switchNav('ontology');return;}
+  drawGraph(); renderLeft();
+  const d=$('ontoDetail');
+  const ifaceHtml=o.interfaces.map(i=>typeof i==='object'?`<span class="od-iface ctrl">${i.n} 🔒</span>`:`<span class="od-iface">${i}</span>`).join('');
+  const propsHtml=o.facts.slice(0,5).map(f=>{const fd=fieldDisplay(f[1],f[2]);
+    return `<div class="od-prop"><span class="k">${f[0]}</span><span class="v ${fd.masked?'masked':''}">${String(fd.text).length>20?String(fd.text).slice(0,20)+'…':fd.text}</span></div>`;}).join('');
+  const linksHtml=o.links.map(l=>`<div class="od-link"><b>${l.lt}</b> → ${wikiPages[l.to]?wikiPages[l.to].title.split(' (')[0]:l.to}</div>`).join('');
+  d.innerHTML=`<div class="od-head"><span class="od-x" id="odX">×</span>
+    <div class="od-type">${o.type}${o.controlled?' · 🔒 受控':''}</div>
+    <div class="od-name" style="color:${typeColor(o.type)}">${o.title}</div></div>
+    <div class="od-body">
+      <div class="od-lbl">实现的 Interface</div><div class="od-ifaces">${ifaceHtml}</div>
+      <div class="od-lbl">属性 (Top)</div>${propsHtml}
+      <div class="od-lbl">关联 Link</div>${linksHtml||'<div class="od-link">—</div>'}</div>
+    <div class="od-open" id="odOpen">在 Wiki 中打开完整 Object →</div>`;
+  d.classList.add('show');
+  $('odX').onclick=()=>d.classList.remove('show');
+  $('odOpen').onclick=()=>{activeNav='wiki';switchNav('wiki');openObject(id);};
+}
+function highlightPath(s,t){highlightedPath={s,t};setTimeout(()=>{highlightedPath=null;if(activeNav==='ontology')drawGraph();},2800);}
+
+/* ==========================================================================
+   CHARTS (animated SVG, gradient palette)
+========================================================================== */
+const C={copper:'#d98a1f',teal:'#0fae9b',blue:'#3b7ff5',violet:'#7c5cf0',red:'#e15a6d',green:'#23a06b',pink:'#c95bd6'};
+function svgWrap(inner,w=640,h=240){return `<svg viewBox="0 0 ${w} ${h}">${inner}</svg>`;}
+function legend(items){return `<div class="ch-legend">${items.map(i=>`<span><i style="background:${i.c}"></i>${i.n}</span>`).join('')}</div>`;}
+
+function barGroup(data,opts){
+  const w=opts.w||640,h=opts.h||230,padL=46,padB=38,padT=14,padR=14,cw=w-padL-padR,ch=h-padT-padB;
+  const max=opts.max||Math.max(...data.flatMap(d=>d.series.map(s=>s.val)))*1.15;
+  const groups=data.length,gGap=22,gw=(cw-gGap*(groups-1))/groups,seriesN=data[0].series.length;
+  const bw=Math.min(36,(gw-7*(seriesN-1))/seriesN);
+  let g='';
+  for(let i=0;i<=4;i++){const yv=max*i/4,y=padT+ch-ch*i/4;
+    g+=`<line class="grid-line ${i===0?'zero':''}" x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}"/><text class="axis" x="${padL-6}" y="${y+3}" text-anchor="end">${yv.toFixed(yv<10?1:0)}</text>`;}
+  data.forEach((d,gi)=>{const gx=padL+gi*(gw+gGap);
+    d.series.forEach((s,si)=>{const bx=gx+(gw-(bw*seriesN+7*(seriesN-1)))/2+si*(bw+7);
+      const bh=ch*s.val/max,by=padT+ch-bh;
+      g+=`<rect x="${bx}" y="${padT+ch}" width="${bw}" height="0" rx="4" fill="${s.color}">
+        <animate attributeName="height" from="0" to="${bh}" dur="0.65s" fill="freeze" begin="${gi*0.08+si*0.04}s"/>
+        <animate attributeName="y" from="${padT+ch}" to="${by}" dur="0.65s" fill="freeze" begin="${gi*0.08+si*0.04}s"/></rect>
+      <text class="bar-label" x="${bx+bw/2}" y="${by-5}" text-anchor="middle" opacity="0">${s.val}${opts.unit||''}
+        <animate attributeName="opacity" from="0" to="1" dur="0.3s" fill="freeze" begin="${gi*0.08+si*0.04+0.65}s"/></text>`;});
+    g+=`<text class="axis" x="${gx+gw/2}" y="${h-padB+18}" text-anchor="middle">${d.label}</text>`;});
+  return svgWrap(g,w,h);
+}
+function chartNodeComparison(){
+  const data=[{label:'N5',series:[{name:'逻辑密度',val:1.0,color:C.violet},{name:'性能',val:1.0,color:C.teal}]},
+    {label:'N3',series:[{name:'逻辑密度',val:1.6,color:C.violet},{name:'性能',val:1.13,color:C.teal}]},
+    {label:'N2(预期)',series:[{name:'逻辑密度',val:2.2,color:C.violet},{name:'性能',val:1.28,color:C.teal}]}];
+  return `<div class="chart-card"><div class="chart-title">制程节点对比 · 相对 N5</div>
+    <div class="chart-sub">逻辑密度与性能（归一化 N5=1.0）· N2 为机构预期值</div>
+    ${barGroup(data,{max:2.6,unit:'x'})}${legend([{n:'逻辑密度',c:C.violet},{n:'性能@同功耗',c:C.teal}])}</div>`;
+}
+function chartCapacityTimeline(){
+  const w=640,h=240,padL=48,padB=38,padT=16,padR=16,cw=w-padL-padR,ch=h-padT-padB;
+  const labels=['23Q1','23Q2','23Q3','23Q4','24Q1','24Q2','24Q3','24Q4'];
+  const revised=[78,82,88,92,95,104,112,120], original=[80,84,90,98,102,null,null,null];
+  const max=140,X=i=>padL+cw*i/(labels.length-1),Y=v=>padT+ch-ch*v/max;
+  let g='';
+  for(let i=0;i<=4;i++){const yv=max*i/4,y=padT+ch-ch*i/4;
+    g+=`<line class="grid-line ${i===0?'zero':''}" x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}"/><text class="axis" x="${padL-6}" y="${y+3}" text-anchor="end">${yv}</text>`;}
+  labels.forEach((l,i)=>g+=`<text class="axis" x="${X(i)}" y="${h-padB+18}" text-anchor="middle">${l}</text>`);
+  const dRev='M'+revised.map((v,i)=>`${X(i)} ${Y(v)}`).join(' L');
+  g+=`<path d="${dRev}" fill="none" stroke="${C.teal}" stroke-width="2.6"><animate attributeName="stroke-dasharray" from="0 900" to="900 0" dur="1s" fill="freeze"/></path>`;
+  revised.forEach((v,i)=>g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="3.4" fill="${C.teal}"/>`);
+  const dOrig='M'+original.filter(v=>v!=null).map((v,i)=>`${X(i)} ${Y(v)}`).join(' L');
+  g+=`<path d="${dOrig}" fill="none" stroke="${C.copper}" stroke-width="2" stroke-dasharray="5 4" opacity="0.85"/>`;
+  original.forEach((v,i)=>{if(v!=null)g+=`<circle cx="${X(i)}" cy="${Y(v)}" r="3" fill="none" stroke="${C.copper}" stroke-width="1.6"/>`;});
+  return `<div class="chart-card"><div class="chart-title">代工厂A 产能时序 · WSPM(300mm等效)</div>
+    <div class="chart-sub">双时间轴：铜色虚线为机构原估值(后被 superseded)，青色为最新真值</div>
+    ${svgWrap(g,w,h)}${legend([{n:'最新真值 (revised)',c:C.teal},{n:'原机构估计 (superseded)',c:C.copper}])}</div>`;
+}
+function chartNodeConfidence(){
+  const w=640,h=240,padL=46,padB=38,padT=16,padR=16,cw=w-padL-padR,ch=h-padT-padB;
+  const nodes=[{n:'N5',mat:0.95,den:1.0,conf:0.9,c:C.teal},{n:'N3',mat:0.8,den:1.6,conf:0.92,c:C.violet},{n:'N2',mat:0.35,den:2.2,conf:0.6,c:C.red}];
+  const maxDen=2.6,X=v=>padL+cw*v,Y=v=>padT+ch-ch*v/maxDen;
+  let g='';
+  for(let i=0;i<=4;i++){const y=padT+ch-ch*i/4;g+=`<line class="grid-line ${i===0?'zero':''}" x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}"/>`;}
+  g+=`<text class="axis" x="${padL+cw/2}" y="${h-5}" text-anchor="middle">成熟度 →</text><text class="axis" x="14" y="${padT+ch/2}" transform="rotate(-90,14,${padT+ch/2})" text-anchor="middle">逻辑密度 →</text>`;
+  nodes.forEach(nd=>{const r=10+nd.conf*22;
+    g+=`<circle cx="${X(nd.mat)}" cy="${Y(nd.den)}" r="0" fill="${nd.c}" opacity="0.5" stroke="${nd.c}" stroke-width="1.5"><animate attributeName="r" from="0" to="${r}" dur="0.6s" fill="freeze"/></circle>
+      <text class="bar-label" x="${X(nd.mat)}" y="${Y(nd.den)+4}" text-anchor="middle">${nd.n}</text>`;});
+  return `<div class="chart-card"><div class="chart-title">节点成熟度 × 密度 × 置信度</div>
+    <div class="chart-sub">气泡大小=综合置信度；N2 气泡最小 → 数据可信度低，谨慎决策</div>${svgWrap(g,w,h)}</div>`;
+}
+// HHI gauge + supplier bars (real computation)
+function hhiGauge(result, label){
+  const {hhi,top1,top3,risk}=result;
+  const pct=Math.min(1,hhi/10000);
+  const r=54,cx=66,cy=66,circ=Math.PI*r; // semicircle
+  const riskColor={critical:C.red,high:'#e87a89',moderate:C.copper,low:C.green}[risk];
+  const riskLabel={critical:'极高',high:'高',moderate:'中',low:'低'}[risk];
+  const gauge=`<svg width="140" height="92" viewBox="0 0 132 84">
+    <path d="M12 72 A54 54 0 0 1 120 72" fill="none" stroke="var(--surface3)" stroke-width="11" stroke-linecap="round"/>
+    <path d="M12 72 A54 54 0 0 1 120 72" fill="none" stroke="${riskColor}" stroke-width="11" stroke-linecap="round"
+      stroke-dasharray="${circ}" stroke-dashoffset="${circ}"><animate attributeName="stroke-dashoffset" from="${circ}" to="${circ*(1-pct)}" dur="1s" fill="freeze"/></path>
+    <text x="66" y="64" text-anchor="middle" font-family="var(--display)" font-size="22" font-weight="700" fill="var(--ink)">${hhi}</text>
+    <text x="66" y="78" text-anchor="middle" font-family="var(--mono)" font-size="9" fill="var(--faint)">HHI</text></svg>`;
+  return `<div class="chart-card"><div class="chart-title">供应集中度 · ${label} <span class="risk-badge risk-${risk}">${riskLabel}风险</span></div>
+    <div class="chart-sub">supply_concentration() 实时计算 · HHI>2500 高度集中</div>
+    <div class="hhi-gauge"><div class="gauge-svg">${gauge}</div>
+      <div class="hhi-detail">
+        <div class="hd-row"><span class="k">HHI 指数</span><span class="v">${hhi}</span></div>
+        <div class="hd-row"><span class="k">Top1 份额</span><span class="v">${(top1*100).toFixed(0)}%</span></div>
+        <div class="hd-row"><span class="k">Top3 份额</span><span class="v">${(top3*100).toFixed(0)}%</span></div>
+        <div class="hd-row"><span class="k">受控供应商</span><span class="v">${result.controlled.length?result.controlled.join('、'):'无'}</span></div>
+      </div></div>
+    <div style="margin-top:14px">${result.suppliers.map(s=>{
+      const color=s.share>0.5?C.red:s.share>0.3?C.copper:C.blue;
+      return `<div class="supplier-bar"><div class="sb-name">${s.name}${s.controlled?'<span class="lk">🔒</span>':''}</div>
+        <div class="sb-track"><div class="sb-fill" style="width:0;background:${color}" data-w="${(s.share*100).toFixed(0)}%">${(s.share*100).toFixed(0)}%</div></div></div>`;}).join('')}</div></div>`;
+}
+function animateBars(){ setTimeout(()=>document.querySelectorAll('.sb-fill[data-w]').forEach(el=>{el.style.width=el.dataset.w;}),60); }
+
+/* ==========================================================================
+   WORKSHOP
+========================================================================== */
+function renderWorkshop(){
+  const apps=[['risk','供应链风险','🛡'],['node','制程竞争态势','📊'],['capacity','产能追踪','📈'],['control','合规暴露','🔒']];
+  const tabsHtml=apps.map(a=>`<button class="ws-tab ${activeWorkshop===a[0]?'on':''}" data-ws="${a[0]}"><span class="wt-ic">${a[2]}</span>${a[1]}</button>`).join('');
+
+  let kpis='', body='';
+  if(activeWorkshop==='risk'){
+    const euvHHI=supplyConcentration([{name:'设备商D',share:1.0,controlled:true}]);
+    const resistHHI=supplyConcentration([{name:'供应商 P1',share:0.45,controlled:true},{name:'供应商 P2',share:0.32,controlled:false},{name:'供应商 P3',share:0.23,controlled:false}]);
+    kpis=`<div class="kpi"><div class="val">${euvHHI.hhi}</div><div class="label">EUV 设备 HHI</div><div class="trend down">▲ 极高集中</div></div>
+      <div class="kpi"><div class="val">1</div><div class="label">EUV 单点依赖供应商</div></div>
+      <div class="kpi"><div class="val">2</div><div class="label">卡脖子 ∩ 受控环节</div></div>`;
+    body=hhiGauge(euvHHI,'EUV 光刻机')+hhiGauge(resistHHI,'EUV 光刻胶');
+  } else if(activeWorkshop==='node'){
+    kpis=`<div class="kpi"><div class="val">N3</div><div class="label">主力先进节点 · HVM</div></div>
+      <div class="kpi"><div class="val">3</div><div class="label">在产/在研节点</div></div>
+      <div class="kpi"><div class="val">N2</div><div class="label">下一代 · risk(预期)</div></div>`;
+    body=chartNodeComparison()+chartNodeConfidence();
+  } else if(activeWorkshop==='capacity'){
+    kpis=`<div class="kpi"><div class="val">120<small>K</small></div><div class="label">代工厂A 当前月产能</div><div class="trend up">▲ +26% YoY</div></div>
+      <div class="kpi"><div class="val">0.91</div><div class="label">产能利用率</div></div>
+      <div class="kpi"><div class="val">95→120<small>K</small></div><div class="label">本季修正(双时间轴)</div></div>`;
+    body=chartCapacityTimeline()+`<div class="card pad" style="margin-top:14px"><div class="section-h" style="margin-top:0">as-of 决策依据还原</div>
+      <p style="font-size:12.5px;color:var(--muted);line-height:1.7">2024-Q1 机构估计代工厂A产能为 102K WSPM，2024-Q4 经官方财报修正为 95K（同一 validTime，不同 transactionTime）。双时间轴保留两条记录：复盘当时决策依据查 as-of，获取真值查 supersededBy IS NULL。前往 Wiki → 代工厂A 体验时间滑杆。</p></div>`;
+  } else {
+    const exposed=[['EUV 光刻机','Equipment','subjectToControl','极高'],['N3 (3nm)','ProcessNode','subjectToControl','高'],['N2 (2nm)','ProcessNode','subjectToControl','高']];
+    kpis=`<div class="kpi"><div class="val">${Object.values(wikiPages).filter(w=>w.controlled).length}</div><div class="label">受控 Object</div></div>
+      <div class="kpi"><div class="val">${actionQueue.filter(a=>a.risk==='high').length}</div><div class="label">高风险待审</div></div>
+      <div class="kpi"><div class="val">100<small>%</small></div><div class="label">受控字段加密覆盖</div></div>`;
+    body=`<div class="card pad"><div class="section-h" style="margin-top:0">合规暴露测绘 · control-exposure
+      <span class="sh-tag">标记不判断 · 法律结论交合规</span></div>
+      ${accessMode()==='hidden'?'<div class="deny-card"><div class="di">🔒</div><div><b>当前角色无权查看受控暴露明细</b><p>切换 Compliance 角色查看完整受控实体清单。</p></div></div>'
+      :`<table><thead><tr><th>受控实体</th><th>类型</th><th>关系</th><th>风险</th><th>操作</th></tr></thead><tbody>
+        ${exposed.map(e=>`<tr><td><b>${e[0]}</b> 🔒</td><td>${e[1]}</td><td><span class="tag red"><span class="d"></span>${e[2]}</span></td>
+          <td><span class="risk-badge risk-${e[3]==='极高'?'critical':'high'}">${e[3]}</span></td>
+          <td><button class="btn secondary sm" onclick="toast('已生成暴露分析报告')">分析</button></td></tr>`).join('')}
+      </tbody></table>`}</div>
+      <div class="card pad" style="margin-top:14px"><div class="section-h" style="margin-top:0">动态安全四层 · Dynamic Security</div>
+        ${[['① 本体层标记','IExportControlled Interface · subjectToControl Link',C.violet],
+           ['② 存储层隔离','字段级加密(Vault) · 受控分区 · 本地LLM不出域',C.blue],
+           ['③ 访问控制层','OPA 行级策略 · 角色明文/脱敏/隐去',C.teal],
+           ['④ 审计层','受控字段读取全量日志 · 标记操作版本化',C.red]].map(l=>
+          `<div style="display:flex;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)">
+            <div style="width:8px;height:8px;border-radius:3px;background:${l[2]};margin-top:5px;flex:none"></div>
+            <div><b style="font-size:13px">${l[0]}</b><p style="font-size:11.5px;color:var(--muted);margin-top:2px">${l[1]}</p></div></div>`).join('')}
+      </div>`;
+  }
+
+  $('view-workshop').innerHTML=`
+    <div class="page-title"><div>
+      <div class="pt-eyebrow">Decision Workshop · ontology-driven</div>
+      <h1>决策工作台</h1>
+      <p>Workshop 把 Object、Link、Action、Function 与 writeback dataset 串成可操作工作流。不只是展示图表，而是直接驱动决策与写回。</p>
+    </div></div>
+    <div class="ws-tabs">${tabsHtml}</div>
+    <div class="grid three">${kpis}</div>
+    <div class="section">${body}</div>
+    <div class="section"><div class="section-h">待审 Action 队列 <span class="sh-tag">${actionQueue.filter(a=>a.status==='pending').length} pending</span></div>
+      <div class="grid two">${actionQueue.map(queueCard).join('')}</div></div>`;
+
+  document.querySelectorAll('[data-ws]').forEach(b=>b.onclick=()=>{activeWorkshop=b.dataset.ws;renderLeft();renderWorkshop();});
+  document.querySelectorAll('[data-approve]').forEach(b=>b.onclick=()=>approveAction(b.dataset.approve));
+  animateBars();
+}
+function queueCard(a){
+  const riskCls={high:'red',medium:'amber',low:'green'}[a.risk];
+  return `<div class="queue-card">
+    <div class="qc-head"><span class="tag ink">${a.type}</span>
+      <span class="tag ${riskCls}"><span class="d"></span>${a.risk}</span>
+      <span class="tag ${a.status==='executed'?'teal':'violet'}"><span class="d"></span>${a.status}</span></div>
+    <div class="qc-title">${a.target}</div>
+    <div class="qc-desc">${a.desc}</div>
+    <div class="qc-actions">
+      <button class="btn ${a.status==='executed'?'secondary':'grad'} sm" data-approve="${a.id}" ${a.status==='executed'?'disabled':''}>${a.status==='executed'?'已执行':'approve'}</button>
+      <button class="btn secondary sm" onclick="toast('沙箱预演已生成 · 影响范围评估完成')">sandbox</button>
+      <button class="btn ghost sm" onclick="toast('/api/onto/diff 已生成')">diff</button>
+    </div></div>`;
+}
+function approveAction(id){
+  const a=actionQueue.find(x=>x.id===id); if(!a)return;
+  if(a.type==='MarkExportControlled'&&!canAction('mark')){toast('🔒 需 Compliance 角色执行',true);return;}
+  a.status='executed';
+  toast(`✓ <b>${a.type}</b> 已执行 · writeback dataset 已更新`);
+  renderRail(); renderWorkshop();
+}
+
+/* ==========================================================================
+   ASK
+========================================================================== */
+const SUGGESTS=[['关键设备供应集中度如何？','🛡'],['N3 节点现在什么状态？','📊'],['两份来源对 DRAM/制程判断有何不同？','⇄'],['有哪些受控或敏感信息？','🔒']];
+function renderSuggest(){
+  const el=$('suggestList'); if(!el)return;
+  el.innerHTML=SUGGESTS.map(s=>`<button class="sg-btn"><span class="sg-ic">${s[1]}</span>${s[0]}</button>`).join('');
+  el.querySelectorAll('.sg-btn').forEach((b,i)=>b.onclick=()=>{activeNav='ask';switchNav('ask');setTimeout(()=>{$('askInput').value=SUGGESTS[i][0];ask();},80);});
+}
+function renderAsk(){
+  $('view-ask').innerHTML=`
+    <div class="page-title"><div>
+      <div class="pt-eyebrow">Ask · Grounded Reasoning</div>
+      <h1>接地问答</h1>
+      <p>问答不是单纯 RAG，而是基于授权范围内的 Object / Property / Link / Action 结果与来源接地回答，每条结论附引用回链，受控内容按角色过滤。</p>
+    </div></div>
+    <div class="ask-layout">
+      <div class="chat-shell">
+        <div class="chat-head"><b><span class="ch-spark"><svg width="13" height="13" viewBox="0 0 24 24" fill="none"><path d="M12 3l2.3 5.2L20 9l-4.2 4 1 6L12 16.2 7.2 19l1-6L4 9l5.7-.8z" fill="#fff"/></svg></span>SemiKB Assistant</b>
+          <span class="tag teal"><span class="d"></span>grounded</span></div>
+        <div class="chat-body" id="chatBody">
+          <div class="scope-note"><span class="d"></span>检索范围：仅当前角色（${ROLES[role].label}）授权可见的 Object 与 Link · 受控内容按权限过滤</div>
+          <div class="msg ai"><div class="who">SemiKB</div><div class="bubble">我基于 LLM-Wiki 构建的知识图谱作答，每条结论附来源回链，并按角色权限过滤受控信息。试试左侧建议问题，或点击引用查看来源。</div></div>
+        </div>
+        <div class="chat-input"><input id="askInput" placeholder="基于授权知识提问…"><button class="btn grad" id="askBtn">提问</button></div>
+      </div>
+      <div class="side-tool">
+        <div class="card pad memory-form">
+          <b style="font-size:13px">写入 Wiki</b>
+          <p style="font-size:11.5px;color:var(--muted);margin:6px 0 9px;line-height:1.5">将问答结论保存为新 Wiki Asset，可后续 PromoteToOntology。</p>
+          <textarea id="wikiDraft" placeholder="最近一次回答会自动填入，也可手动编辑。"></textarea>
+          <div class="tag-row"><button class="btn grad sm" id="saveWiki">加入 Wiki</button>
+            <button class="btn secondary sm" id="fillLast">填入最近回答</button></div>
+        </div>
+        <div class="card pad memory-form">
+          <b style="font-size:13px">本地记忆</b>
+          <p style="font-size:11.5px;color:var(--muted);margin:6px 0 0;line-height:1.5">记忆进入本地时间线，不默认写入本体。</p>
+          <select id="memPeriod"><option>永久记忆</option><option>30天</option><option>7天</option><option>本次会话</option></select>
+          <textarea id="memInput" placeholder="例如：持续跟踪 EUV 单点依赖与替代源进展。"></textarea>
+          <button class="btn teal sm" id="saveMem" style="margin-top:8px">保存记忆</button>
+        </div>
+        <div class="card pad"><b style="font-size:13px">Memory Timeline</b><div class="timeline" id="memTimeline" style="margin-top:12px"></div></div>
+      </div>
+    </div>`;
+  $('askBtn').onclick=ask;
+  $('askInput').addEventListener('keydown',e=>{if(e.key==='Enter')ask();});
+  $('saveWiki').onclick=saveAnswerToWiki;
+  $('fillLast').onclick=()=>{$('wikiDraft').value=lastAnswer||'暂无最近回答。';};
+  $('saveMem').onclick=saveMemory;
+  renderMemory();
+}
+const QA=[
+  {re:/供应|集中|卡脖子|单点|euv|光刻/i,
+   ans:`关键设备 <b>EUV 光刻机</b> 当前呈<b>单点依赖</b>（supplierCount=1，analyst conf 0.85），是先进节点 N3/N5 的共同瓶颈设备（requiresEquipment）。<code>supply_concentration()</code> 计算 HHI=10000（极高集中）。该设备同时<b>受出口管制</b>，构成「卡脖子 ∩ 管制」双重风险。`,
+   cites:['s2','s4'], ctrl:`<br><br>受控明细（合规可见）：EUV 关联 ExportControlRule，ECCN 为先进光刻设备相关条目。`},
+  {re:/n3|3nm|节点|状态|量产|hvm/i,
+   ans:`<b>N3</b> 为 3nm 级 FinFET 节点，当前状态 <b>HVM（量产）</b>（official, 2024-Q4, conf 0.92），由代工厂 A 运营，后继节点为 N2。注意 marketing node「N3」是商业命名，本体不据此推断物理栅长。`,
+   cites:['s1','s4'], ctrl:`<br><br>受控明细（合规可见）：N3 受先进逻辑制程相关条目管制。`},
+  {re:/对比|不同|两份|差异|来源/i,
+   ans:`两类来源知识角色不同：<b>官方财报</b>（s1, sourceTier=official）适合作为 Event/Action 触发源，含产能、营收、节点状态等催化信息；<b>机构报告</b>（s2, analyst）适合作为行业 backing datasource。系统按 official>analyst>rumor 消解冲突——同一产能字段，官方值覆盖机构估计。`,
+   cites:['s1','s2']},
+  {re:/产能|capacity|wspm|capex/i,
+   ans:`<b>代工厂 A</b> 月产能约 <b>120,000 片/月（300mm 等效）</b>，利用率 0.91（official, 2024-Q4）。产能为双时间轴建模——2024-Q1 机构估计 102K 后被官方修正为 95K，前往 Wiki 用 as-of 滑杆可还原当时决策依据。`,
+   cites:['s1']},
+  {re:/受控|敏感|权限|合规/i,
+   ans:()=>{const fd=fieldDisplay('IPO/财务披露与先进制程管制细节',true);return `当前角色为 <b>${ROLES[role].label}</b>。受控字段策略返回：<span class="${fd.masked?'masked':'val-mono'}">${fd.text}</span>。真实部署中前端不会收到无权明文——OPA 在 API 层过滤，Vault 字段级加密。`;},
+   cites:['s4']},
+  {re:/.*/, ans:`我基于当前知识库中<b>你被授权访问</b>的 Object 与 Link 作答。可问：供应集中度、N3 状态、产能时序、来源差异，或点击左侧建议问题。`, cites:[]},
+];
+function ask(){
+  const inp=$('askInput'),q=inp.value.trim(); if(!q)return; inp.value='';
+  const body=$('chatBody');
+  body.insertAdjacentHTML('beforeend',`<div class="msg user"><div class="bubble">${q}</div></div>`);
+  const hit=QA.find(x=>x.re.test(q))||QA[QA.length-1];
+  let ans=typeof hit.ans==='function'?hit.ans():hit.ans;
+  if(hit.ctrl){ if(accessMode()==='clear')ans+=hit.ctrl; else ans+=`<div class="filtered">🔒 部分受控明细已按角色（${ROLES[role].label}）过滤 · 切换合规角色查看</div>`; }
+  lastAnswer=ans.replace(/<[^>]+>/g,'');
+  const cites=(hit.cites||[]).filter(id=>{const s=files.find(f=>f.id===id);return !(s&&s.controlled&&accessMode()==='hidden');});
+  const citeHtml=cites.length?`<div class="cites">${cites.map(id=>{const s=files.find(f=>f.id===id);return `<span class="cite" data-cite="${id}">↩ ${s.name}${s.controlled?' 🔒':''}</span>`;}).join('')}</div>`:'';
+  setTimeout(()=>{
+    body.insertAdjacentHTML('beforeend',`<div class="msg ai"><div class="who">SemiKB · grounded</div><div class="bubble">${ans}${citeHtml}</div></div>`);
+    body.querySelectorAll('.cite').forEach(c=>c.onclick=()=>{const sid=c.dataset.cite;if(files.find(f=>f.id===sid)){activeFile=sid;activeNav='sources';switchNav('sources');toast('↩ 已跳转至引用来源');}});
+    const draft=$('wikiDraft'); if(draft)draft.value=lastAnswer;
+    body.scrollTop=body.scrollHeight;
+  },280);
+  body.scrollTop=body.scrollHeight;
+}
+function saveAnswerToWiki(){
+  const txt=$('wikiDraft').value.trim(); if(!txt){toast('请先生成或填写要加入 Wiki 的内容');return;}
+  const id='QA'+Date.now();
+  wikiPages[id]={id, type:'Insight', title:'问答结论 · 决策洞察', src:'本地问答', confidence:.78, controlled:false,
+    interfaces:['IHasSource','IHasConfidence'], summary:txt,
+    facts:[['生成方式','Chatbot 问答写入',false,'analyst',.78,new Date().toLocaleDateString('zh-CN'),'本地问答']],
+    entities:['问答结论'], links:[], timeline:[[new Date().toLocaleString('zh-CN'),'问答结论写入 Wiki','user']]};
+  activeWiki=id; toast('✓ 回答已保存为 Wiki Asset'); activeNav='wiki'; switchNav('wiki');
+}
+function saveMemory(){
+  const txt=$('memInput').value.trim(); if(!txt)return;
+  memories.unshift({time:new Date().toLocaleString('zh-CN')+' · '+$('memPeriod').value, text:txt});
+  $('memInput').value=''; renderMemory(); toast('记忆已保存');
+}
+function renderMemory(){
+  const el=$('memTimeline'); if(!el)return;
+  el.innerHTML=memories.map(m=>`<div class="tl"><time>${m.time}</time><p>${m.text}</p></div>`).join('');
+}
+
+/* ==========================================================================
+   GENERATE
+========================================================================== */
+const MODELS=[{n:'Claude Sonnet',loc:false},{n:'GPT-4o',loc:false},{n:'Qwen2.5',loc:true}];
+const GENERATORS=[
+  {id:'research','ic':'📑',t:'调研报告',d:'综合知识库生成结构化竞争/技术调研报告，含图表与来源',out:'PDF / Word',color:C.blue},
+  {id:'weekly',ic:'🗞️',t:'周报 / 日报',d:'汇总近期新增文档、Action、事件的情报简报',out:'Markdown / PDF',color:C.teal},
+  {id:'compare',ic:'📊',t:'对比分析',d:'多实体多维度对比，生成可视化对比图表',out:'PNG / PPT',color:C.violet},
+  {id:'ppt',ic:'🖥️',t:'演示 PPT',d:'将调研结论转为汇报演示文稿大纲与配图',out:'PPTX',color:C.pink},
+];
+function renderGenerate(){
+  $('view-generate').innerHTML=`
+    <div class="page-title"><div>
+      <div class="pt-eyebrow">Generation Studio</div><h1>生成中心</h1>
+      <p>生成不是「写文章」，而是从授权的 Source、Wiki、本体与 Action 状态中组装可追溯的报告、PPT、PDF 与图表。受控内容按角色过滤后再交模型。</p>
+    </div></div>
+    <div class="model-bar"><span class="mb-lbl">生成模型</span>
+      <div class="model-pick" id="modelPick">${MODELS.map(m=>`<span class="mp ${m.n===activeModel?'on':''}" data-model="${m.n}"><span class="d"></span>${m.n}${m.loc?'<span class="loc">本地</span>':''}</span>`).join('')}</div>
+      <span style="font-family:var(--mono);font-size:9.5px;color:var(--faint);margin-left:auto">受控内容优先本地模型(Qwen2.5) · 不出域</span></div>
+    <div class="section"><div class="section-h">选择生成类型</div>
+      <div class="gen-grid">${GENERATORS.map(g=>`<div class="gen-card" data-gen="${g.id}">
+        <div class="gc-ic" style="background:${g.color}1a;color:${g.color}">${g.ic}</div>
+        <div class="gc-t">${g.t}</div><div class="gc-d">${g.d}</div><div class="gc-out">输出 · ${g.out}</div></div>`).join('')}</div></div>
+    <div class="section"><div class="section-h">生成范围 scope</div>
+      <div class="scope-box">${[['wiki','Wiki 条目','基于结构化 Object 生成'],['ontology','本体图谱','基于实体关系与语义路径'],['sources','来源文件','基于原始解析文档'],['compare','双文件对比','两份来源维度化比较']].map(s=>
+        `<div class="scope-tile ${activeScope===s[0]?'on':''}" data-scope="${s[0]}"><b>${s[1]}</b><p>${s[2]}</p></div>`).join('')}</div></div>
+    <div id="genOutput"></div>`;
+  document.querySelectorAll('[data-model]').forEach(m=>m.onclick=()=>{activeModel=m.dataset.model;renderGenerate();renderLeft();toast(`生成模型 → <b>${activeModel}</b>`);});
+  document.querySelectorAll('[data-scope]').forEach(s=>s.onclick=()=>{activeScope=s.dataset.scope;renderGenerate();renderLeft();});
+  document.querySelectorAll('[data-gen]').forEach(c=>c.onclick=()=>generate(c.dataset.gen));
+}
+function generate(kind){
+  const out=$('genOutput');
+  const steps={research:['检索授权知识子图…','抽取关键 Object/Metric…','按角色过滤受控内容…','生成报告结构…','渲染图表…'],
+    weekly:['汇总近期新增文档…','收集 Action / Event…','生成简报条目…'],
+    compare:['选择对比实体…','对齐对比维度…','计算并渲染对比图…'],
+    ppt:['提炼汇报要点…','生成幻灯片大纲…','匹配配图…']}[kind];
+  out.innerHTML=`<div class="gen-output"><div class="go-body"><div class="gen-loading"><div class="gl-spin"></div>
+    <div class="gl-txt">${activeModel} 生成中 · 接地于知识库</div><div class="gl-step" id="genStep">${steps[0]}</div></div></div></div>`;
+  let i=0; const iv=setInterval(()=>{i++;const s=$('genStep');if(i<steps.length){if(s)s.textContent=steps[i];}else{clearInterval(iv);renderGenerated(kind);}},440);
+  out&&out.scrollIntoView&&out.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+function renderGenerated(kind){
+  const out=$('genOutput'),today=new Date().toLocaleDateString('zh-CN');
+  const clearAcc=accessMode()==='clear';
+  const filterNote=clearAcc?'':`<p style="color:var(--red);font-family:var(--mono);font-size:11px;background:var(--red-soft);padding:8px 11px;border-radius:9px">🔒 报告已按角色（${ROLES[role].label}）过滤受控明细。</p>`;
+  let title,meta,body;
+  if(kind==='research'){
+    title='先进制程竞争态势 · 调研报告'; meta=`${activeModel} · ${today} · 接地 ${files.length} 来源`;
+    body=`<h3>先进制程竞争态势调研</h3><div class="rpt-sub">自动生成 · 数据标注 sourceTier · 受控内容按权限过滤</div>
+      <div class="grid four">
+        <div class="kpi"><div class="val">N3</div><div class="label">主力节点 HVM</div></div>
+        <div class="kpi"><div class="val">120<small>K</small></div><div class="label">代工厂A 月产能</div></div>
+        <div class="kpi"><div class="val">1</div><div class="label">EUV 供应商(单点)</div></div>
+        <div class="kpi"><div class="val">0.91</div><div class="label">产能利用率</div></div></div>
+      <h4>一、制程节点演进</h4><p>当前先进逻辑制程呈 N5 → N3 → N2 演进。N3 已量产（official, 2024-Q4, conf 0.92）；N2 处于预期风险试产，数据多为机构估计与渠道传闻（conf 0.55–0.72），决策需谨慎引用。</p>
+      ${chartNodeComparison()}
+      <h4>二、产能与利用率</h4><p>代工厂 A 月产能约 120K WSPM（300mm 等效），利用率 0.91。产能采用双时间轴建模，历史季度值经 ReviseCapacity 保留，可做 as-of 回溯。</p>
+      ${chartCapacityTimeline()}
+      <h4>三、供应链与卡脖子风险</h4><p>EUV 光刻机单点依赖（HHI=10000）叠加出口管制，构成「卡脖子 ∩ 管制」双重风险。建议建立替代源测绘与管制暴露监控。</p>
+      ${hhiGauge(supplyConcentration([{name:'设备商D',share:1.0,controlled:true}]),'EUV 光刻机')}
+      ${filterNote}`;
+  } else if(kind==='weekly'){
+    title='半导体情报周报'; meta=`${activeModel} · ${today} · 自动汇总`;
+    const built=procJobs.filter(j=>j.built).length;
+    body=`<h3>半导体情报周报</h3><div class="rpt-sub">汇总新增来源 / Action / 事件 · ${today}</div>
+      <h4>本周新增来源</h4><p>来源 ${files.length} 份（含用户上传并建 Wiki ${built} 份）。层级分布：official ${files.filter(f=>f.tier==='official').length}、analyst ${files.filter(f=>f.tier==='analyst').length}、rumor ${files.filter(f=>f.tier==='rumor').length}。</p>
+      <h4>关键事件</h4><p>· N3 状态确认 HVM（AdvanceRoadmap, official）。<br>· EUV 标记受出口管制（MarkExportControlled, 合规执行）。<br>· 代工厂A 产能修正 95K→120K（ReviseCapacity, 双时间轴）。</p>
+      <h4>待审 Action</h4><p>当前 ${actionQueue.filter(a=>a.status==='pending').length} 条待审，含 ${actionQueue.filter(a=>a.risk==='high').length} 条高风险。EUV 单点依赖叠加管制列为最高优先风险项。</p>${filterNote}`;
+  } else if(kind==='compare'){
+    title='制程节点对比分析'; meta=`${activeModel} · ${today} · 多维度对比`;
+    body=`<h3>制程节点对比分析</h3><div class="rpt-sub">N5 / N3 / N2 多维度对比</div>
+      <h4>逻辑密度与性能（相对 N5）</h4>${chartNodeComparison()}
+      <h4>成熟度 × 置信度</h4><p>N5/N3 以 official 来源为主；N2 含较多 analyst/rumor，气泡越小代表综合置信度越低。</p>${chartNodeConfidence()}${filterNote}`;
+  } else {
+    title='汇报演示 · 幻灯片大纲'; meta=`${activeModel} · ${today} · PPTX 大纲`;
+    body=`<h3>先进制程竞争态势 · 汇报 PPT</h3><div class="rpt-sub">幻灯片大纲 + 配图建议</div>
+      <h4>幻灯片 1 · 封面</h4><p>标题：先进制程竞争态势 ｜ 副标题：基于知识库的自动情报汇总 ｜ ${today}</p>
+      <h4>幻灯片 2 · 核心结论</h4><div class="grid three"><div class="kpi"><div class="val">N3</div><div class="label">主力节点 HVM</div></div><div class="kpi"><div class="val">120<small>K</small></div><div class="label">月产能 WSPM</div></div><div class="kpi"><div class="val">双重</div><div class="label">EUV 卡脖子+管制</div></div></div>
+      <h4>幻灯片 3 · 节点对比（配图）</h4>${chartNodeComparison()}
+      <h4>幻灯片 4 · 供应链风险（配图）</h4>${hhiGauge(supplyConcentration([{name:'设备商D',share:1.0,controlled:true}]),'EUV 光刻机')}
+      <h4>幻灯片 5 · 行动建议</h4><p>建立替代源测绘 · 管制暴露持续监控 · 低置信数据补充 official 来源。</p>${filterNote}`;
+  }
+  out.innerHTML=`<div class="gen-output">
+    <div class="go-head"><div class="go-t">${title}</div><div class="go-meta">${meta}</div>
+      <div class="go-export">
+        <span class="exp-btn pdf" data-exp="PDF">⬇ PDF</span><span class="exp-btn ppt" data-exp="PPT">⬇ PPT</span>
+        <span class="exp-btn" data-exp="Word">⬇ Word</span><span class="exp-btn" data-exp="MD">⬇ MD</span></div></div>
+    <div class="go-body">${body}</div></div>`;
+  out.querySelectorAll('[data-exp]').forEach(b=>b.onclick=()=>toast(`已生成 <b>${title}</b> 的 <b>${b.dataset.exp}</b> 文件 · 经文档生成服务导出（原型演示）`));
+  animateBars();
+  out&&out.scrollIntoView&&out.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ==========================================================================
+   DRAWER + SEARCH + BOOT
+========================================================================== */
+function renderDrawer(){
+  $('drawerBody').innerHTML=actionQueue.map(a=>{
+    const riskCls={high:'red',medium:'amber',low:'green'}[a.risk];
+    return `<div class="drawer-item">
+      <div class="di-top"><span class="di-type">${a.type}</span>
+        <span class="tag ${riskCls}" style="margin-left:auto"><span class="d"></span>${a.risk}</span>
+        <span class="tag ${a.status==='executed'?'teal':'violet'}"><span class="d"></span>${a.status}</span></div>
+      <div class="di-target">${a.target}</div><div class="di-desc">${a.desc}</div>
+      ${a.status==='pending'?`<div class="qc-actions" style="margin-top:10px"><button class="btn grad sm" data-dapprove="${a.id}">approve</button></div>`:''}
+    </div>`;}).join('');
+  $('drawerBody').querySelectorAll('[data-dapprove]').forEach(b=>b.onclick=()=>{approveAction(b.dataset.dapprove);renderDrawer();});
+}
+function wireSearch(){
+  const inp=$('searchInput');
+  inp.addEventListener('keydown',e=>{
+    if(e.key!=='Enter')return;
+    const q=inp.value.trim().toLowerCase(); if(!q)return;
+    const w=Object.values(wikiPages).find(x=>x.title.toLowerCase().includes(q)||x.id.toLowerCase().includes(q)||x.summary.toLowerCase().includes(q)||x.entities.some(e=>e.toLowerCase().includes(q)));
+    if(w){if(w.controlled&&accessMode()==='hidden'){toast('🔒 命中受控实体 · 无权',true);return;}activeNav='wiki';switchNav('wiki');openObject(w.id);toast(`跳转 Wiki · <b>${w.title.split(' (')[0]}</b>`);return;}
+    const f=files.find(x=>x.title.toLowerCase().includes(q)||x.name.toLowerCase().includes(q));
+    if(f){activeFile=f.id;activeNav='sources';switchNav('sources');toast(`跳转来源 · <b>${f.name}</b>`);return;}
+    const n=ontoNodes.find(x=>x.id.toLowerCase().includes(q));
+    if(n){activeNav='ontology';switchNav('ontology');selectGraphNode(n.id);toast(`跳转本体节点 · <b>${n.id}</b>`);return;}
+    toast(`未找到「${inp.value}」· 试试 N3 / EUV / 代工厂 / 供应集中度`);
+  });
+  document.addEventListener('keydown',e=>{if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='k'){e.preventDefault();inp.focus();}});
+}
+function boot(){
+  renderRole(); renderRail(); switchNav('sources');
+  $('fileInput').addEventListener('change',e=>{handleFiles(e.target.files);e.target.value='';});
+  $('actionBell').onclick=()=>{renderDrawer();$('drawer').classList.add('show');};
+  $('drawerClose').onclick=()=>$('drawer').classList.remove('show');
+  $('modalOverlay').onclick=e=>{if(e.target===$('modalOverlay'))closeModal();};
+  wireSearch();
+  setTimeout(()=>toast('提示：切换右上角<b>角色</b>，观察受控字段/实体/Action 的权限变化'),900);
+}
+boot();
+
+</script>
+</body>
+</html>
